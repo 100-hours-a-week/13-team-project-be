@@ -3,9 +3,9 @@ spring:
     name: matchimban-api
 
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/matchimban}
+    username: ${DB_USERNAME:matchimban}
+    password: ${DB_PASSWORD:matchimban}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -14,3 +14,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
