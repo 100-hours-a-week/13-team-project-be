@@ -1,7 +1,9 @@
 package com.matchimban.matchimban_api.global.error;
 
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+@Getter
 public class ApiException extends RuntimeException {
 	private final HttpStatus status;
 	private final String detail;
@@ -18,11 +20,4 @@ public class ApiException extends RuntimeException {
 		this.detail = detail;
 	}
 
-	public HttpStatus getStatus() {
-		return status;
-	}
-
-	public String getDetail() {
-		return detail;
-	}
 }
