@@ -90,15 +90,23 @@ jobs:
               fi
             fi
 
-            DB_URL="${{ secrets.DB_URL }}" \
-            DB_USERNAME="${{ secrets.DB_USERNAME }}" \
-            DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-            REDIS_HOST="${{ secrets.REDIS_HOST }}" \
-            REDIS_PORT="${{ secrets.REDIS_PORT }}" \
-            nohup java -jar ${{ env.JAR_NAME }} > logs/app.log 2>&1 &
+            export DB_URL="${{ secrets.DB_URL }}"
+            export DB_USERNAME="${{ secrets.DB_USERNAME }}"
+            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            export REDIS_HOST="${{ secrets.REDIS_HOST }}"
+            export REDIS_PORT="${{ secrets.REDIS_PORT }}"
 
-            sleep 10
-            echo "배포 완료"
+            nohup java -jar ${{ env.JAR_NAME }} > logs/app.log 2>&1 &
+            disown
+
+            sleep 15
+
+            if pgrep -f "${{ env.JAR_NAME }}" > /dev/null; then
+              echo "배포 완료 - 프로세스 실행 중"
+            else
+              echo "배포 실패 - 프로세스가 실행되지 않음"
+              exit 1
+            fi
           EOF
 
       # ===== Stage 4: Smoke Test =====
@@ -148,18 +156,19 @@ jobs:
             if [ -f "${{ env.BACKUP_PATH }}/${{ env.JAR_NAME }}.backup" ]; then
               cp ${{ env.BACKUP_PATH }}/${{ env.JAR_NAME }}.backup ${{ env.DEPLOY_PATH }}/${{ env.JAR_NAME }}
 
-              DB_URL="${{ secrets.DB_URL }}" \
-              DB_USERNAME="${{ secrets.DB_USERNAME }}" \
-              DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
-              REDIS_HOST="${{ secrets.REDIS_HOST }}" \
-              REDIS_PORT="${{ secrets.REDIS_PORT }}" \
-              nohup java -jar ${{ env.JAR_NAME }} > logs/app.log 2>&1 &
+              export DB_URL="${{ secrets.DB_URL }}"
+              export DB_USERNAME="${{ secrets.DB_USERNAME }}"
+              export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+              export REDIS_HOST="${{ secrets.REDIS_HOST }}"
+              export REDIS_PORT="${{ secrets.REDIS_PORT }}"
 
-              sleep 10
+              nohup java -jar ${{ env.JAR_NAME }} > logs/app.log 2>&1 &
+              disown
+
+              sleep 15
               echo "롤백 완료"
             else
-              echo "백업 파일 없음"
-              exit 1
+              echo "백업 파일 없음 (최초 배포)"
             fi
           EOF
 
