@@ -2,17 +2,15 @@ package com.matchimban.matchimban_api.auth.kakao.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.matchimban.matchimban_api.auth.kakao.config.KakaoOAuthProperties;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.global.error.ApiException;
 import java.io.IOException;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -28,42 +26,29 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
 public class KakaoAuthService {
-	private static final Duration STATE_TTL = Duration.ofMinutes(10);
+	private static final Duration STATE_TTL = Duration.ofMinutes(5);
+	private static final String OAUTH_STATE_KEY_PREFIX = "oauth_state:";
 
-	private final Map<String, Instant> stateStore = new ConcurrentHashMap<>();
-	private final String authorizeUrl;
-	private final String tokenUrl;
-	private final String userInfoUrl;
-	private final String clientId;
-	private final String clientSecret;
-	private final String redirectUri;
+	private final KakaoOAuthProperties properties;
 	private final RestTemplate restTemplate;
 	private final ObjectMapper objectMapper;
+	private final StringRedisTemplate stringRedisTemplate;
 
 	public KakaoAuthService(
-		@Value("${kakao.oauth.authorize-url}") String authorizeUrl,
-		@Value("${kakao.oauth.token-url}") String tokenUrl,
-		@Value("${kakao.oauth.user-info-url}") String userInfoUrl,
-		@Value("${kakao.oauth.client-id}") String clientId,
-		@Value("${kakao.oauth.client-secret}") String clientSecret,
-		@Value("${kakao.oauth.redirect-uri}") String redirectUri,
+		KakaoOAuthProperties properties,
 		RestTemplateBuilder restTemplateBuilder,
-		ObjectMapper objectMapper
+		ObjectMapper objectMapper,
+		StringRedisTemplate stringRedisTemplate
 	) {
-		this.authorizeUrl = authorizeUrl;
-		this.tokenUrl = tokenUrl;
-		this.userInfoUrl = userInfoUrl;
-		this.clientId = clientId;
-		this.clientSecret = clientSecret;
-		this.redirectUri = redirectUri;
+		this.properties = properties;
 		this.restTemplate = restTemplateBuilder.build();
 		this.objectMapper = objectMapper;
+		this.stringRedisTemplate = stringRedisTemplate;
 	}
 
 	public String issueState() {
 		String state = UUID.randomUUID().toString();
-		stateStore.put(state, Instant.now());
-		cleanupExpiredStates();
+		stringRedisTemplate.opsForValue().set(buildOauthStateKey(state), "1", STATE_TTL);
 		return state;
 	}
 
@@ -71,20 +56,16 @@ public class KakaoAuthService {
 		if (state == null || state.isBlank()) {
 			return false;
 		}
-		Instant issuedAt = stateStore.remove(state);
-		if (issuedAt == null) {
-			return false;
-		}
-		return issuedAt.isAfter(Instant.now().minus(STATE_TTL));
+		return stringRedisTemplate.delete(buildOauthStateKey(state));
 	}
 
 	public String buildAuthorizeUrl(String state) {
 		validateOauthConfig();
 
-		return UriComponentsBuilder.fromUriString(authorizeUrl)
+		return UriComponentsBuilder.fromUriString(properties.authorizeUrl())
 			.queryParam("response_type", "code")
-			.queryParam("client_id", clientId)
-			.queryParam("redirect_uri", redirectUri)
+			.queryParam("client_id", properties.clientId())
+			.queryParam("redirect_uri", properties.redirectUri())
 			.queryParam("state", state)
 			.toUriString();
 	}
@@ -94,11 +75,11 @@ public class KakaoAuthService {
 
 		MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
 		body.add("grant_type", "authorization_code");
-		body.add("client_id", clientId);
-		body.add("redirect_uri", redirectUri);
+		body.add("client_id", properties.clientId());
+		body.add("redirect_uri", properties.redirectUri());
 		body.add("code", code);
-		if (clientSecret != null && !clientSecret.isBlank()) {
-			body.add("client_secret", clientSecret);
+		if (properties.clientSecret() != null && !properties.clientSecret().isBlank()) {
+			body.add("client_secret", properties.clientSecret());
 		}
 
 		HttpHeaders headers = new HttpHeaders();
@@ -107,7 +88,7 @@ public class KakaoAuthService {
 		HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 		try {
 			ResponseEntity<KakaoTokenResponse> response = restTemplate.postForEntity(
-				tokenUrl,
+				properties.tokenUrl(),
 				request,
 				KakaoTokenResponse.class
 			);
@@ -133,7 +114,7 @@ public class KakaoAuthService {
 
 		try {
 			ResponseEntity<String> response = restTemplate.exchange(
-				userInfoUrl,
+				properties.userInfoUrl(),
 				HttpMethod.GET,
 				request,
 				String.class
@@ -163,7 +144,8 @@ public class KakaoAuthService {
 	}
 
 	private void validateOauthConfig() {
-		if (clientId == null || clientId.isBlank() || redirectUri == null || redirectUri.isBlank()) {
+		if (properties.clientId() == null || properties.clientId().isBlank()
+			|| properties.redirectUri() == null || properties.redirectUri().isBlank()) {
 			throw new ApiException(
 				HttpStatus.INTERNAL_SERVER_ERROR,
 				"internal_server_error",
@@ -172,8 +154,7 @@ public class KakaoAuthService {
 		}
 	}
 
-	private void cleanupExpiredStates() {
-		Instant cutoff = Instant.now().minus(STATE_TTL);
-		stateStore.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
+	private String buildOauthStateKey(String state) {
+		return OAUTH_STATE_KEY_PREFIX + state;
 	}
 }
