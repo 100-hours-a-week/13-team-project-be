@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+	private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 	@ExceptionHandler(ApiException.class)
 	public ResponseEntity<ErrorResponse> handleApiException(ApiException ex) {
@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleException(Exception ex) {
-		log.error("Unhandled exception", ex);
+		LOG.error("Unhandled exception", ex);
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 			.body(ErrorResponse.of("internal_server_error"));
 	}
