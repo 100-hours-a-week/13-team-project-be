@@ -56,7 +56,7 @@ public class KakaoAuthService {
 		if (state == null || state.isBlank()) {
 			return false;
 		}
-		return stringRedisTemplate.delete(buildOauthStateKey(state));
+		return Boolean.TRUE.equals(stringRedisTemplate.delete(buildOauthStateKey(state)));
 	}
 
 	public String buildAuthorizeUrl(String state) {
