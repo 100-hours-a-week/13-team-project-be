@@ -95,6 +95,7 @@ jobs:
             export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
             export REDIS_HOST="${{ secrets.REDIS_HOST }}"
             export REDIS_PORT="${{ secrets.REDIS_PORT }}"
+            export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
 
             nohup java -jar ${{ env.JAR_NAME }} > logs/app.log 2>&1 &
             disown
@@ -157,6 +158,7 @@ jobs:
               export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
               export REDIS_HOST="${{ secrets.REDIS_HOST }}"
               export REDIS_PORT="${{ secrets.REDIS_PORT }}"
+              export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
 
               nohup java -jar ${{ env.JAR_NAME }} > logs/app.log 2>&1 &
               disown

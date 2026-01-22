@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+
+    <!-- =================================================================== -->
+    <!-- 유지: CORRECTNESS, MT_CORRECTNESS, PERFORMANCE (High/Medium만) -->
+    <!-- =================================================================== -->
+
+    <!-- ===== 카테고리 전체 제외 ===== -->
+    <Match><Bug category="STYLE"/></Match>
+    <Match><Bug category="I18N"/></Match>
+    <Match><Bug category="SECURITY"/></Match>
+    <Match><Bug category="MALICIOUS_CODE"/></Match>
+    <Match><Bug category="EXPERIMENTAL"/></Match>
+
+    <!-- ===== Low 우선순위 제외 (Priority 3 = Low) ===== -->
+    <Match><Priority value="3"/></Match>
+
+    <!-- ===== 특정 버그 패턴 제외 (오탐) ===== -->
+    <Match><Bug pattern="EI_EXPOSE_REP"/></Match>
+    <Match><Bug pattern="EI_EXPOSE_REP2"/></Match>
+    <Match><Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR"/></Match>
+    <Match><Bug pattern="SE_BAD_FIELD"/></Match>
+    <Match><Bug pattern="SE_NO_SERIALVERSIONID"/></Match>
+
+    <!-- ===== 특정 패키지/클래스 제외 ===== -->
+    <Match><Package name="~.*\.generated.*"/></Match>
+    <Match><Package name="~.*\.dto.*"/></Match>
+    <Match><Package name="~.*\.entity.*"/></Match>
+    <Match><Package name="~.*\.config.*"/></Match>
+    <Match><Class name="~.*Test$"/></Match>
+
+</FindBugsFilter>

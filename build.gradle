@@ -68,7 +68,7 @@ checkstyle {
 // =============================================================================
 spotbugs {
     toolVersion = '4.8.6'
-    // excludeFilter = file("${rootDir}/config/spotbugs/exclude.xml")
+    excludeFilter = file("${rootDir}/config/spotbugs/exclude.xml")
 }
 
 tasks.withType(com.github.spotbugs.snom.SpotBugsTask) {

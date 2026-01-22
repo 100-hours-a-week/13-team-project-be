@@ -13,4 +13,5 @@ public interface KakaoAuthService {
 	KakaoTokenResponse requestToken(String code);
 
 	KakaoUserInfo requestUserInfo(String accessToken);
+
 }
