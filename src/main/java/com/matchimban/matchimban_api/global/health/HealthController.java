@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.controller;
+package com.matchimban.matchimban_api.global.health;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
