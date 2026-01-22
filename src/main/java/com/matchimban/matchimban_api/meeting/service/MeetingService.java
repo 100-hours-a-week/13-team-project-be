@@ -7,7 +7,7 @@ import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
-import com.matchimban.matchimban_api.user.entity.User;
+import com.matchimban.matchimban_api.member.entity.Member;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,7 +33,7 @@ public class MeetingService {
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
-    public CreateMeetingResponse createMeeting(Long userId, CreateMeetingRequest req) {
+    public CreateMeetingResponse createMeeting(Long memberId, CreateMeetingRequest req) {
         validateTimeRules(req);
 
         for (int attempt = 1; attempt <= INVITE_CODE_RETRY; attempt++) {
@@ -58,15 +58,15 @@ public class MeetingService {
                         .isExceptBar(req.isExceptBar())
                         .isQuickMeeting(req.isQuickMeeting())
                         .inviteCode(inviteCode)
-                        .hostUserId(userId)
+                        .hostMemberId(memberId)
                         .build();
 
                 Meeting saved = meetingRepository.save(meeting);
 
-                User userRef = entityManager.getReference(User.class, userId);
+                Member memberRef = entityManager.getReference(Member.class, memberId);
                 MeetingParticipant host = MeetingParticipant.builder()
                         .meeting(saved)
-                        .user(userRef)
+                        .member(memberRef)
                         .role(MeetingParticipant.Role.HOST)
                         .status(MeetingParticipant.Status.ACTIVE)
                         .build();

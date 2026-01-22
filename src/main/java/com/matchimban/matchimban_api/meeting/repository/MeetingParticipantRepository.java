@@ -26,11 +26,11 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
         select mp
         from MeetingParticipant mp
         where mp.meeting.id = :meetingId
-          and mp.user.id = :userId
+          and mp.member.id = :memberId
     """)
-    Optional<MeetingParticipant> findByMeetingIdAndUserId(
+    Optional<MeetingParticipant> findByMeetingIdAndMemberId(
             @Param("meetingId") Long meetingId,
-            @Param("userId") Long userId
+            @Param("memberId") Long memberId
     );
 
 }
