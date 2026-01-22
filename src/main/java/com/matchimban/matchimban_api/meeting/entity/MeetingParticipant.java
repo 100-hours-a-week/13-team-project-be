@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.meeting.entity;
 
-import com.matchimban.matchimban_api.member.entity.Member;
+import com.matchimban.matchimban_api.member.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -33,7 +33,7 @@ public class MeetingParticipant {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "member_id", nullable = false)
-    private Member member;
+    private User member;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
@@ -55,7 +55,7 @@ public class MeetingParticipant {
     private LocalDateTime updatedAt;
 
     @Builder
-    private MeetingParticipant(Meeting meeting, Member member, Role role, Status status) {
+    private MeetingParticipant(Meeting meeting, User member, Role role, Status status) {
         this.meeting = meeting;
         this.member = member;
         this.role = role;
