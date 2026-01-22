@@ -22,10 +22,10 @@ public class MeetingParticipantController {
     @Operation(summary = "모임 참여", description = "inviteCode로 모임에 참여")
     @PostMapping("/participate_meetings")
     public ResponseEntity<ParticipateMeetingResponse> participateMeeting(
-            @RequestParam Long userId, //TODO: JWT 구현 시 수정
+            @RequestParam Long memberId, //TODO: JWT 구현 시 수정
             @Valid @RequestBody ParticipateMeetingRequest request
     ) {
-        ParticipateMeetingResponse response = meetingParticipationService.participateMeeting(userId, request);
+        ParticipateMeetingResponse response = meetingParticipationService.participateMeeting(memberId, request);
         return ResponseEntity.ok(response);
     }
 

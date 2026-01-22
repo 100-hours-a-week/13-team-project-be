@@ -83,6 +83,6 @@ public class Meeting {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(name = "host_user_id", nullable = false)
-    private Long hostUserId;
+    @Column(name = "host_member_id", nullable = false)
+    private Long hostMemberId;
 }

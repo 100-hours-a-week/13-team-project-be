@@ -7,7 +7,7 @@ import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
-import com.matchimban.matchimban_api.user.entity.User;
+import com.matchimban.matchimban_api.member.entity.Member;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,8 +23,8 @@ public class MeetingParticipationService {
     private final EntityManager entityManager;
 
     @Transactional
-    public ParticipateMeetingResponse participateMeeting(Long userId, ParticipateMeetingRequest request) {
-        if (userId == null) {
+    public ParticipateMeetingResponse participateMeeting(Long memberId, ParticipateMeetingRequest request) {
+        if (memberId == null) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized");
         }
 
@@ -34,14 +34,14 @@ public class MeetingParticipationService {
         Long meetingId = meeting.getId();
 
         MeetingParticipant existing = meetingParticipantRepository
-                .findByMeeting_IdAndUser_Id(meetingId, userId)
+                .findByMeetingIdAndMemberId(meetingId, memberId)
                 .orElse(null);
 
         if (existing != null && existing.getStatus() == MeetingParticipant.Status.ACTIVE) {
             return new ParticipateMeetingResponse(meetingId);
         }
 
-        long activeCount = meetingParticipantRepository.countByMeeting_IdAndStatus(
+        long activeCount = meetingParticipantRepository.countByMeetingIdAndStatus(
                 meetingId, MeetingParticipant.Status.ACTIVE
         );
 
@@ -54,11 +54,11 @@ public class MeetingParticipationService {
             return new ParticipateMeetingResponse(meetingId);
         }
 
-        User userRef = entityManager.getReference(User.class, userId);
+        Member memberRef = entityManager.getReference(Member.class, memberId);
 
         MeetingParticipant participant = MeetingParticipant.builder()
                 .meeting(meeting)
-                .user(userRef)
+                .member(memberRef)
                 .role(MeetingParticipant.Role.MEMBER)
                 .status(MeetingParticipant.Status.ACTIVE)
                 .build();

@@ -24,10 +24,10 @@ public class MeetingController {
     @ApiResponse(responseCode = "201", description = "created")
     @PostMapping
     public ResponseEntity<CreateMeetingResponse> createMeeting(
-            @RequestParam Long userId, // TODO: JWT 구현 시 수정
+            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
             @Valid @RequestBody CreateMeetingRequest request
     ) {
-        CreateMeetingResponse response = meetingService.createMeeting(userId, request);
+        CreateMeetingResponse response = meetingService.createMeeting(memberId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
