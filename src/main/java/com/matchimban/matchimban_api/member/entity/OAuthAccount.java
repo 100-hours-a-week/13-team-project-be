@@ -29,8 +29,8 @@ public class OAuthAccount {
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
 
-	@Column(name = "provider_user_id", length = 32, nullable = false)
-	private String providerUserId;
+	@Column(name = "provider_member_id", length = 32, nullable = false)
+	private String providerMemberId;
 
 	@Column(length = 10, nullable = false)
 	private String provider;

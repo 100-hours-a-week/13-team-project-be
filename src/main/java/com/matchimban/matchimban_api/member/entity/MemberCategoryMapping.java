@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.member.entity;
 
+import com.matchimban.matchimban_api.member.entity.memberEnum.MemberCategoryRelationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

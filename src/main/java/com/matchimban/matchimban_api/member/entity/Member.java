@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.member.entity;
 
+import com.matchimban.matchimban_api.member.entity.memberEnum.MemberStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,8 +23,8 @@ import lombok.NoArgsConstructor;
 public class Member {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "users_seq")
-	@SequenceGenerator(name = "users_seq", sequenceName = "users_seq", allocationSize = 1)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "members_seq")
+	@SequenceGenerator(name = "members_seq", sequenceName = "members_seq", allocationSize = 1)
 	private Long id;
 
 	@Column(length = 30)

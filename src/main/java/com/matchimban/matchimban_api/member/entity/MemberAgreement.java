@@ -16,22 +16,22 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "user_agreements")
+@Table(name = "member_agreements")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class UserAgreement {
+public class MemberAgreement {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_agreements_seq")
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "member_agreements_seq")
 	@SequenceGenerator(
-		name = "user_agreements_seq",
-		sequenceName = "user_agreements_seq",
+		name = "member_agreements_seq",
+		sequenceName = "member_agreements_seq",
 		allocationSize = 1
 	)
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", nullable = false)
+	@JoinColumn(name = "member_id", nullable = false)
 	private Member member;
 
 	@ManyToOne(fetch = FetchType.LAZY)
