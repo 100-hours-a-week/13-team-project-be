@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.member.entity.memberEnum;
+package com.matchimban.matchimban_api.member.entity.enums;
 
 public enum MemberCategoryRelationType {
 	ALLERGY,
