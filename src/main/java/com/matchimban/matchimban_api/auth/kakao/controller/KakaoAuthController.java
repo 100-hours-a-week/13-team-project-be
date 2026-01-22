@@ -4,6 +4,8 @@ import com.matchimban.matchimban_api.auth.kakao.dto.KakaoAuthCodeRequest;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
+import com.matchimban.matchimban_api.auth.kakao.service.KakaoMemberService;
+import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.global.error.ApiException;
 import com.matchimban.matchimban_api.global.swagger.CommonAuthErrorResponses;
 import com.matchimban.matchimban_api.global.swagger.InternalServerErrorResponse;
@@ -28,9 +30,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class KakaoAuthController {
 
 	private final KakaoAuthService kakaoAuthService;
+	private final KakaoMemberService kakaoMemberService;
 
-	public KakaoAuthController(KakaoAuthService kakaoAuthService) {
+	public KakaoAuthController(
+		KakaoAuthService kakaoAuthService,
+		KakaoMemberService kakaoMemberService
+	) {
 		this.kakaoAuthService = kakaoAuthService;
+		this.kakaoMemberService = kakaoMemberService;
 	}
 
 	@Operation(summary = "카카오 로그인 시작", description = "카카오 인가 페이지로 302 Redirect")
@@ -57,14 +64,6 @@ public class KakaoAuthController {
 		String state = request.state();
 		String code = request.code();
 
-		log.info(
-			"Kakao auth-code callback. state={}, code={}, error={}, errorDescription={}",
-			state,
-			code,
-			error,
-			errorDescription
-		);
-
 		if (error != null) {
 			String detail = errorDescription != null ? errorDescription : error;
 			throw new ApiException(HttpStatus.FORBIDDEN, "oauth_access_denied", detail);
@@ -78,14 +77,9 @@ public class KakaoAuthController {
 
 		KakaoTokenResponse tokenResponse = kakaoAuthService.requestToken(code);
 		KakaoUserInfo userInfo = kakaoAuthService.requestUserInfo(tokenResponse.accessToken());
-		log.info("Kakao user info raw={}", userInfo.raw());
-		log.info(
-			"Kakao profile id={}, nickname={}, thumbnailImageUrl={}, profileImageUrl={}",
-			userInfo.id(),
-			userInfo.nickname(),
-			userInfo.thumbnailImageUrl(),
-			userInfo.profileImageUrl()
-		);
+		Member member = kakaoMemberService.findOrCreateMember(userInfo);
+
+		log.info("Member linked. id={}, status={}", member.getId(), member.getStatus());
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setLocation(URI.create("/"));

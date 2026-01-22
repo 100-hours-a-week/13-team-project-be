@@ -1,10 +1,11 @@
-package com.matchimban.matchimban_api.auth.kakao.service;
+package com.matchimban.matchimban_api.auth.kakao.service.serviceImpl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.matchimban.matchimban_api.auth.kakao.config.KakaoOAuthProperties;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
+import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
 import com.matchimban.matchimban_api.global.error.ApiException;
 import java.io.IOException;
 import java.time.Duration;
