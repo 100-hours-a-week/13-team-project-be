@@ -76,4 +76,8 @@ public class MeetingParticipant {
         INACTIVE,
         LEFT;
     }
+
+    public void leave() {
+        this.status = Status.LEFT;
+    }
 }

@@ -54,9 +54,9 @@ public class SecurityConfig {
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(List.of("https://moyeobab.com", "https://www.moyeobab.com"));
+        configuration.setAllowedOrigins(List.of("https://moyeobab.com", "https://www.moyeobab.com"));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-		configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-CSRF-Token"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-CSRF-Token"));
 		configuration.setAllowCredentials(true); //
 		configuration.setMaxAge(3600L);
 

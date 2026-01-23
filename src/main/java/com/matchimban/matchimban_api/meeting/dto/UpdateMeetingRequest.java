@@ -1,16 +1,17 @@
 package com.matchimban.matchimban_api.meeting.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
 @NoArgsConstructor
-public class CreateMeetingRequest {
+@Schema(description = "모임 부분 수정 요청")
+public class UpdateMeetingRequest {
 
     @Schema(description = "모임 이름")
     @NotBlank
@@ -55,10 +56,10 @@ public class CreateMeetingRequest {
     private LocalDateTime voteDeadlineAt;
 
     @Schema(description = "고깃집 제외 여부")
-    private boolean exceptMeat;
+    private Boolean exceptMeat;
 
     @Schema(description = "술집 제외 여부")
-    private boolean exceptBar;
+    private Boolean exceptBar;
 
     @Schema(description = "스와이프 수")
     @Min(1)
@@ -66,5 +67,5 @@ public class CreateMeetingRequest {
     private int swipeCount;
 
     @Schema(description = "퀵 모임 여부")
-    private boolean quickMeeting;
+    private Boolean quickMeeting;
 }
