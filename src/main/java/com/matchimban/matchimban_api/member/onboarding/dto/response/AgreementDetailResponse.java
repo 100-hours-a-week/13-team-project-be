@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.member.onboarding.dto;
+package com.matchimban.matchimban_api.member.onboarding.dto.response;
 
 public record AgreementDetailResponse(
 	Long agreementId,
