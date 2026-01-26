@@ -55,4 +55,9 @@ public class Member {
 
 	@Column(name = "guest_uuid")
 	private UUID guestUuid;
+
+	public void updateStatus(MemberStatus status) {
+		this.status = status;
+		this.updatedAt = LocalDateTime.now();
+	}
 }
