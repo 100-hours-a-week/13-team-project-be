@@ -14,5 +14,7 @@ jwt:
   issuer: "matchimban-test"
   access-token-expire-minutes: 60
   cookie-name: "access_token"
+  refresh-cookie-name: "refresh_token"
+  refresh-token-expire-days: 7
   cookie-secure: false
   cookie-same-site: "Lax"

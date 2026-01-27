@@ -4,6 +4,7 @@ import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
 import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
 import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import com.matchimban.matchimban_api.global.swagger.OnboardingErrorResponses;
 import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.member.onboarding.dto.error.ConflictSelectionData;
@@ -81,13 +82,14 @@ public class OnboardingController {
 		responseCode = "200",
 		description = "agreements_accepted"
 	)
+	@CsrfRequired
 	@OnboardingErrorResponses
 	public ResponseEntity<ApiResult<?>> consentAgreements(
 		@RequestBody AgreementConsentRequest request
 	) {
 		// 약관 동의 후 상태 전환 및 JWT 재발급
-		Long memberId = requireMemberId();
-		AgreementConsentResult result = onboardingService.acceptAgreements(memberId, request);
+		MemberPrincipal principal = requirePrincipal();
+		AgreementConsentResult result = onboardingService.acceptAgreements(principal.memberId(), request);
 		if (result.hasMissing()) {
 			// 필수 약관 미동의면 400으로 누락 목록을 내려준다.
 			MissingAgreementsData data = new MissingAgreementsData(result.missingAgreementIds());
@@ -98,7 +100,7 @@ public class OnboardingController {
 		Member member = result.member();
 		HttpHeaders headers = new HttpHeaders();
 		// 상태 전환이 반영된 최신 JWT를 재발급한다.
-		String accessToken = jwtTokenProvider.createAccessToken(member);
+		String accessToken = jwtTokenProvider.createAccessToken(member, principal.sid());
 		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(accessToken).toString());
 
 		return ResponseEntity.ok()
@@ -124,13 +126,14 @@ public class OnboardingController {
 		responseCode = "200",
 		description = "preferences_saved"
 	)
+	@CsrfRequired
 	@OnboardingErrorResponses
 	public ResponseEntity<ApiResult<?>> savePreferences(
 		@RequestBody PreferencesSaveRequest request
 	) {
 		// 취향 저장 후 상태 전환 및 JWT 재발급
-		Long memberId = requireMemberId();
-		PreferencesSaveResult result = onboardingService.savePreferences(memberId, request);
+		MemberPrincipal principal = requirePrincipal();
+		PreferencesSaveResult result = onboardingService.savePreferences(principal.memberId(), request);
 		if (result.hasOverlaps()) {
 			// 선호/비선호 중복은 409로 처리한다.
 			ConflictSelectionData data = new ConflictSelectionData(result.overlappedCategories());
@@ -147,7 +150,7 @@ public class OnboardingController {
 		Member member = result.member();
 		HttpHeaders headers = new HttpHeaders();
 		// 상태 전환이 반영된 최신 JWT를 재발급한다.
-		String accessToken = jwtTokenProvider.createAccessToken(member);
+		String accessToken = jwtTokenProvider.createAccessToken(member, principal.sid());
 		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(accessToken).toString());
 
 		PreferencesSavedData data = new PreferencesSavedData(member.getStatus().name());
@@ -156,12 +159,12 @@ public class OnboardingController {
 			.body(ApiResult.of("preferences_saved", data));
 	}
 
-	private Long requireMemberId() {
+	private MemberPrincipal requirePrincipal() {
 		// SecurityContext에서 로그인된 사용자만 허용
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !(authentication.getPrincipal() instanceof MemberPrincipal principal)) {
 			throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized");
 		}
-		return principal.memberId();
+		return principal;
 	}
 }

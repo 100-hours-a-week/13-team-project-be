@@ -3,6 +3,7 @@ package com.matchimban.matchimban_api.meeting.controller;
 import com.matchimban.matchimban_api.meeting.dto.*;
 import com.matchimban.matchimban_api.meeting.service.MeetingReadService;
 import com.matchimban.matchimban_api.meeting.service.MeetingService;
+import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +24,7 @@ public class MeetingController {
 
     @Operation(summary = "모임 생성", description = "모임 생성하고 inviteCode 반환")
     @ApiResponse(responseCode = "201", description = "created")
+    @CsrfRequired
     @PostMapping
     public ResponseEntity<CreateMeetingResponse> createMeeting(
             @RequestParam Long memberId, // TODO: JWT 구현 시 수정
@@ -52,6 +54,7 @@ public class MeetingController {
     }
 
     @Operation(summary = "모임 수정", description = "모임 정보를 부분 수정(호스트만 가능)")
+    @CsrfRequired
     @PatchMapping("/{meetingId}")
     public ResponseEntity<UpdateMeetingResponse> updateMeeting(
             @RequestParam Long memberId, // TODO: JWT 구현 시 수정
@@ -63,6 +66,7 @@ public class MeetingController {
 
     @Operation(summary = "모임 탈퇴", description = "현재 사용자가 모임 탈퇴(호스트는 불가)")
     @ApiResponse(responseCode = "204", description = "No Content")
+    @CsrfRequired
     @DeleteMapping("/{meetingId}/members/me")
     public ResponseEntity<Void> leaveMeeting(
             @RequestParam Long memberId, // TODO: JWT로 구현 시 수정
@@ -74,6 +78,7 @@ public class MeetingController {
 
     @Operation(summary = "모임 삭제", description = "모임 삭제(soft delete), (호스트만 가능)")
     @ApiResponse(responseCode = "204", description = "No Content")
+    @CsrfRequired
     @DeleteMapping("/{meetingId}")
     public ResponseEntity<Void> deleteMeeting(
             @RequestParam Long memberId, // TODO: JWT 구현 시 수정

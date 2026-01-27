@@ -3,6 +3,7 @@ package com.matchimban.matchimban_api.meeting.controller;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingRequest;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.service.MeetingParticipationService;
+import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ public class MeetingParticipantController {
     private final MeetingParticipationService meetingParticipationService;
 
     @Operation(summary = "모임 참여", description = "inviteCode로 모임에 참여")
+    @CsrfRequired
     @PostMapping("/participate_meetings")
     public ResponseEntity<ParticipateMeetingResponse> participateMeeting(
             @RequestParam Long memberId, //TODO: JWT 구현 시 수정

@@ -36,6 +36,8 @@ jwt:
   issuer: ${JWT_ISSUER:matchimban}
   access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:60}
   cookie-name: ${JWT_COOKIE_NAME:access_token}
+  refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refresh_token}
+  refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:7}
   cookie-secure: ${JWT_COOKIE_SECURE:false}
   cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
 

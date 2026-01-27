@@ -8,6 +8,7 @@ import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoMemberService;
 import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
+import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
 import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.global.error.ApiException;
@@ -17,6 +18,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
+import java.util.UUID;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
@@ -36,15 +38,18 @@ public class KakaoAuthController {
 	private final KakaoAuthService kakaoAuthService;
 	private final KakaoMemberService kakaoMemberService;
 	private final JwtTokenProvider jwtTokenProvider;
+	private final RefreshTokenService refreshTokenService;
 
 	public KakaoAuthController(
 		KakaoAuthService kakaoAuthService,
 		KakaoMemberService kakaoMemberService,
-		JwtTokenProvider jwtTokenProvider
+		JwtTokenProvider jwtTokenProvider,
+		RefreshTokenService refreshTokenService
 	) {
 		this.kakaoAuthService = kakaoAuthService;
 		this.kakaoMemberService = kakaoMemberService;
 		this.jwtTokenProvider = jwtTokenProvider;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	@Operation(summary = "카카오 로그인 시작", description = "카카오 인가 페이지로 302 Redirect")
@@ -88,8 +93,11 @@ public class KakaoAuthController {
 		Member member = kakaoMemberService.findOrCreateMember(userInfo);
 
 		HttpHeaders headers = new HttpHeaders();
-		String accessToken = jwtTokenProvider.createAccessToken(member);
+		String sid = UUID.randomUUID().toString();
+		String accessToken = jwtTokenProvider.createAccessToken(member, sid);
+		String refreshToken = refreshTokenService.issue(member.getId(), sid, null);
 		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(accessToken).toString());
+		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createRefreshTokenCookie(refreshToken).toString());
 		headers.setLocation(URI.create("/"));
 
 		KakaoAuthCallbackResponse data = new KakaoAuthCallbackResponse("/", member.getStatus().name());
