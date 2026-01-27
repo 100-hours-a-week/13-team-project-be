@@ -38,8 +38,8 @@ public class MeetingServiceImpl implements MeetingService {
     public CreateMeetingResponse createMeeting(Long memberId, CreateMeetingRequest req) {
         validateTimeRules(req.getScheduledAt(), req.getVoteDeadlineAt());
 
-        int INVITE_CODE_RETRY = 10;
-        for (int attempt = 1; attempt <= INVITE_CODE_RETRY; attempt++) {
+        int inviteCodeRetry = 10;
+        for (int attempt = 1; attempt <= inviteCodeRetry; attempt++) {
             String inviteCode = generateInviteCode();
 
             if (meetingRepository.existsByInviteCode(inviteCode)) {
@@ -79,7 +79,7 @@ public class MeetingServiceImpl implements MeetingService {
                 return new CreateMeetingResponse(saved.getId(), saved.getInviteCode());
 
             } catch (DataIntegrityViolationException e) {
-                if (attempt == INVITE_CODE_RETRY) {
+                if (attempt == inviteCodeRetry) {
                     throw new ApiException(HttpStatus.CONFLICT, "invite_code_conflict", e.getMessage());
                 }
             }
@@ -148,13 +148,13 @@ public class MeetingServiceImpl implements MeetingService {
     }
 
     private String generateInviteCode() {
-        int INVITE_CODE_LEN = 8;
-        String INVITE_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        int inviteCodeLen = 8;
+        String inviteCodeChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-        StringBuilder sb = new StringBuilder(INVITE_CODE_LEN);
-        for (int i = 0; i < INVITE_CODE_LEN; i++) {
-            int index = secureRandom.nextInt(INVITE_CODE_CHARS.length());
-            sb.append(INVITE_CODE_CHARS.charAt(index));
+        StringBuilder sb = new StringBuilder(inviteCodeLen);
+        for (int i = 0; i < inviteCodeLen; i++) {
+            int index = secureRandom.nextInt(inviteCodeChars.length());
+            sb.append(inviteCodeChars.charAt(index));
         }
         return sb.toString();
     }
