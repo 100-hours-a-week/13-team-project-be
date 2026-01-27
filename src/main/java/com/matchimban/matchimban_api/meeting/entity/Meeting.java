@@ -23,7 +23,7 @@ public class Meeting {
     @SequenceGenerator(
             name = "meetings_seq_gen",
             sequenceName = "meetings_seq",
-            allocationSize = 50
+            allocationSize = 1
     )
     private Long id;
 
@@ -116,9 +116,9 @@ public class Meeting {
         if (searchRadiusM != null) this.searchRadiusM = searchRadiusM;
         if (swipeCount != null) this.swipeCount = swipeCount;
 
-        if (exceptMeat != null) this.isExceptMeat = isExceptMeat;
-        if (exceptBar != null) this.isExceptBar = isExceptBar;
-        if (quickMeeting != null) this.isQuickMeeting = isQuickMeeting;
+        if (exceptMeat != null) this.isExceptMeat = exceptMeat;
+        if (exceptBar != null) this.isExceptBar = exceptBar;
+        if (quickMeeting != null) this.isQuickMeeting = quickMeeting;
     }
 
 }

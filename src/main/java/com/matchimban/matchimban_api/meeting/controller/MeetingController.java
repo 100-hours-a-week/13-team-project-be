@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +24,6 @@ public class MeetingController {
     private final MeetingReadService meetingReadService;
 
     @Operation(summary = "모임 생성", description = "모임 생성하고 inviteCode 반환")
-    @ApiResponse(responseCode = "201", description = "created")
     @PostMapping
     public ResponseEntity<CreateMeetingResponse> createMeeting(
             @RequestParam Long memberId, // TODO: JWT 구현 시 수정
@@ -37,7 +38,7 @@ public class MeetingController {
     public ResponseEntity<MyMeetingsResponse> getMyMeetings(
             @RequestParam Long memberId, // TODO: JWT 구현 시 수정
             @RequestParam(required = false) Long cursor,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size
     ) {
         return ResponseEntity.ok(meetingReadService.getMyMeetings(memberId, cursor, size));
     }
@@ -59,17 +60,6 @@ public class MeetingController {
             @Valid @RequestBody UpdateMeetingRequest request
     ) {
         return ResponseEntity.ok(meetingService.updateMeeting(memberId, meetingId, request));
-    }
-
-    @Operation(summary = "모임 탈퇴", description = "현재 사용자가 모임 탈퇴(호스트는 불가)")
-    @ApiResponse(responseCode = "204", description = "No Content")
-    @DeleteMapping("/{meetingId}/members/me")
-    public ResponseEntity<Void> leaveMeeting(
-            @RequestParam Long memberId, // TODO: JWT로 구현 시 수정
-            @PathVariable Long meetingId
-    ) {
-        meetingService.leaveMeeting(memberId, meetingId);
-        return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "모임 삭제", description = "모임 삭제(soft delete), (호스트만 가능)")

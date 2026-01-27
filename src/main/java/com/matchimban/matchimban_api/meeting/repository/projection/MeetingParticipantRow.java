@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.meeting.repository;
+package com.matchimban.matchimban_api.meeting.repository.projection;
 
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 

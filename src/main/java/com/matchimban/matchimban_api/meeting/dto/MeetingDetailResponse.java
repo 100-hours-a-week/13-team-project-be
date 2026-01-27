@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.meeting.dto;
 
+import com.matchimban.matchimban_api.vote.entity.VoteStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -12,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @Schema(description = "모임 상세 조회 응답")
 public class MeetingDetailResponse {
+
     @Schema(description = "모임 ID")
     private Long meetingId;
 
@@ -62,4 +64,16 @@ public class MeetingDetailResponse {
 
     @Schema(description = "참여자 목록")
     private List<MeetingParticipantSummary> participants;
+
+    @Schema(description = "현재(최신) 투표 ID")
+    private Long currentVoteId;
+
+    @Schema(description = "현재(최신) 투표 상태")
+    private VoteStatus voteStatus;
+
+    @Schema(description = "최종 선택 완료 여부")
+    private boolean finalSelected;
+
+    @Schema(description = "모임 진행 상태")
+    private MeetingStatus meetingStatus;
 }

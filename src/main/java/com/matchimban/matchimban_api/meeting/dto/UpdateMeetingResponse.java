@@ -6,6 +6,7 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
+@Schema(description = "모임 수정 응답")
 public class UpdateMeetingResponse {
 
     @Schema(description = "수정된 모임 ID")

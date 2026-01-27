@@ -8,6 +8,7 @@ import java.util.List;
 
 @Getter
 @AllArgsConstructor
+@Schema(description = "내 모임 목록 조회 응답")
 public class MyMeetingsResponse {
 
     @Schema(description = "모임 목록")

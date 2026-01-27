@@ -1,8 +1,8 @@
 package com.matchimban.matchimban_api.meeting.repository;
 
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
-import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRow;
-import com.matchimban.matchimban_api.meeting.repository.MyMeetingCursorRow;
+import com.matchimban.matchimban_api.meeting.repository.projection.MeetingParticipantProfileRow;
+import com.matchimban.matchimban_api.meeting.repository.projection.MyMeetingRow;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +16,39 @@ import java.util.Optional;
 public interface MeetingParticipantRepository extends JpaRepository<MeetingParticipant, Long> {
 
     @Query("""
+    select new com.matchimban.matchimban_api.meeting.repository.projection.MyMeetingRow(
+        mp.id,
+        m.id,
+        m.title,
+        m.scheduledAt,
+        (select count(mp2.id)
+           from MeetingParticipant mp2
+          where mp2.meeting = m
+            and mp2.status = :activeStatus
+        ),
+        m.targetHeadcount,
+        (select v.status
+           from Vote v
+          where v.meeting = m
+            and v.round = (select max(v2.round) from Vote v2 where v2.meeting = m)
+        )
+    )
+    from MeetingParticipant mp
+    join mp.meeting m
+    where mp.member.id = :memberId
+      and mp.status = :activeStatus
+      and m.isDeleted = false
+      and (:cursor is null or mp.id < :cursor)
+    order by mp.id desc
+""")
+    List<MyMeetingRow> findMyMeetingRows(
+            @Param("memberId") Long memberId,
+            @Param("cursor") Long cursor,
+            @Param("activeStatus") MeetingParticipant.Status activeStatus,
+            Pageable pageable
+    );
+
+    @Query("""
         select (count(mp) > 0)
         from MeetingParticipant mp
         where mp.meeting.id = :meetingId
@@ -27,6 +60,19 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
             @Param("memberId") Long memberId,
             @Param("status") MeetingParticipant.Status status
     );
+
+    @Query("""
+        select
+            mp.member.id as memberId,
+            mp.member.nickname as nickname,
+            mp.member.profileImageUrl as profileImageUrl
+        from MeetingParticipant mp
+        where mp.meeting.id = :meetingId
+          and mp.status = com.matchimban.matchimban_api.meeting.entity.MeetingParticipant.Status.ACTIVE
+        order by mp.createdAt asc, mp.id asc
+    """)
+    List<MeetingParticipantProfileRow> findActiveParticipantProfiles(@Param("meetingId") Long meetingId);
+
 
     @Query("""
         select count(mp)
@@ -48,50 +94,6 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
     Optional<MeetingParticipant> findByMeetingIdAndMemberId(
             @Param("meetingId") Long meetingId,
             @Param("memberId") Long memberId
-    );
-
-    @Query("""
-    select 
-        mp.member.id as memberId,
-        mp.role as role,
-        mp.status as status,
-        mp.createdAt as createdAt
-    from MeetingParticipant mp
-    where mp.meeting.id = :meetingId
-    order by mp.createdAt asc, mp.id asc
-""")
-    List<MeetingParticipantRow> findParticipantRows(@Param("meetingId") Long meetingId);
-
-    interface MeetingCountRow {
-        Long getMeetingId();
-        Long getCnt();
-    }
-
-    @Query("""
-        select mp.meeting.id as meetingId, count(mp) as cnt
-        from MeetingParticipant mp
-        where mp.meeting.id in :meetingIds
-          and mp.status = com.matchimban.matchimban_api.meeting.entity.MeetingParticipant.Status.ACTIVE
-        group by mp.meeting.id
-    """)
-    List<MeetingCountRow> countActiveByMeetingIds(@Param("meetingIds") List<Long> meetingIds);
-
-    @Query("""
-    select 
-        mp.id as meetingParticipantId,
-        m.id as meetingId
-    from MeetingParticipant mp
-    join mp.meeting m
-    where mp.member.id = :memberId
-      and mp.status = com.matchimban.matchimban_api.meeting.entity.MeetingParticipant.Status.ACTIVE
-      and m.isDeleted = false
-      and (:cursor is null or mp.id < :cursor)
-    order by mp.id desc
-""")
-    List<MyMeetingCursorRow> findMyMeetingCursorRows(
-            @Param("memberId") Long memberId,
-            @Param("cursor") Long cursor,
-            Pageable pageable
     );
 
 }

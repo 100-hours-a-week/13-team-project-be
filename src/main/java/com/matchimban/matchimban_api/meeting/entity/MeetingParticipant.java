@@ -23,7 +23,7 @@ public class MeetingParticipant {
     @SequenceGenerator(
             name = "meeting_participants_seq_gen",
             sequenceName = "meeting_participants_seq",
-            allocationSize = 50
+            allocationSize = 1
     )
     private Long id;
 
@@ -62,10 +62,6 @@ public class MeetingParticipant {
         this.status = status;
     }
 
-    public void reactivate() {
-        this.status = Status.ACTIVE;
-    }
-
     public enum Role {
         HOST,
         MEMBER;
@@ -75,6 +71,10 @@ public class MeetingParticipant {
         ACTIVE,
         INACTIVE,
         LEFT;
+    }
+
+    public void reactivate() {
+        this.status = Status.ACTIVE;
     }
 
     public void leave() {

@@ -4,22 +4,17 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
-
 @Getter
 @AllArgsConstructor
-@Schema(description = "모임 참여자 요약 정보")
+@Schema(description = "모임 참여자 표시용 정보")
 public class MeetingParticipantSummary {
 
-    @Schema(description = "참여자 memberId")
+    @Schema(description = "참여자 memberId", example = "10")
     private Long memberId;
 
-    @Schema(description = "역할", allowableValues = {"HOST", "MEMBER"})
-    private String role;
+    @Schema(description = "참여자 닉네임", example = "hazel")
+    private String nickname;
 
-    @Schema(description = "상태", allowableValues = {"ACTIVE", "INACTIVE", "LEFT"})
-    private String status;
-
-    @Schema(description = "참여 일시")
-    private LocalDateTime joinedAt;
+    @Schema(description = "프로필 이미지 URL(없으면 null)", example = "https://.../profile.jpg", nullable = true)
+    private String profileImageUrl;
 }
