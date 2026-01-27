@@ -32,6 +32,7 @@ public class MeetingParticipantController {
     }
 
     @Operation(summary = "모임 탈퇴", description = "현재 사용자가 모임 탈퇴(호스트는 불가)")
+    @CsrfRequired
     @ApiResponse(responseCode = "204", description = "No Content")
     @DeleteMapping("meetings/{meetingId}/members/me")
     public ResponseEntity<Void> leaveMeeting(

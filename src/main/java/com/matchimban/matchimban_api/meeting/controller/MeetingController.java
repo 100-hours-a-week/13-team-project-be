@@ -66,17 +66,6 @@ public class MeetingController {
         return ResponseEntity.ok(meetingService.updateMeeting(memberId, meetingId, request));
     }
 
-    @Operation(summary = "모임 탈퇴", description = "현재 사용자가 모임 탈퇴(호스트는 불가)")
-    @ApiResponse(responseCode = "204", description = "No Content")
-    @CsrfRequired
-    @DeleteMapping("/{meetingId}/members/me")
-    public ResponseEntity<Void> leaveMeeting(
-            @RequestParam Long memberId, // TODO: JWT로 구현 시 수정
-            @PathVariable Long meetingId
-    ) {
-        meetingService.leaveMeeting(memberId, meetingId);
-        return ResponseEntity.noContent().build();
-    }
 
     @Operation(summary = "모임 삭제", description = "모임 삭제(soft delete), (호스트만 가능)")
     @ApiResponse(responseCode = "204", description = "No Content")
