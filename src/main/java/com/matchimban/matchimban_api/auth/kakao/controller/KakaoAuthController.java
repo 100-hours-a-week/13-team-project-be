@@ -1,9 +1,15 @@
 package com.matchimban.matchimban_api.auth.kakao.controller;
 
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoAuthCodeRequest;
+import com.matchimban.matchimban_api.auth.kakao.dto.KakaoAuthCallbackResponse;
+import com.matchimban.matchimban_api.auth.kakao.dto.KakaoLoginResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
+import com.matchimban.matchimban_api.auth.kakao.service.KakaoMemberService;
+import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
+import com.matchimban.matchimban_api.global.dto.ApiResult;
+import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.global.error.ApiException;
 import com.matchimban.matchimban_api.global.swagger.CommonAuthErrorResponses;
 import com.matchimban.matchimban_api.global.swagger.InternalServerErrorResponse;
@@ -28,22 +34,31 @@ import org.springframework.web.bind.annotation.RestController;
 public class KakaoAuthController {
 
 	private final KakaoAuthService kakaoAuthService;
+	private final KakaoMemberService kakaoMemberService;
+	private final JwtTokenProvider jwtTokenProvider;
 
-	public KakaoAuthController(KakaoAuthService kakaoAuthService) {
+	public KakaoAuthController(
+		KakaoAuthService kakaoAuthService,
+		KakaoMemberService kakaoMemberService,
+		JwtTokenProvider jwtTokenProvider
+	) {
 		this.kakaoAuthService = kakaoAuthService;
+		this.kakaoMemberService = kakaoMemberService;
+		this.jwtTokenProvider = jwtTokenProvider;
 	}
 
 	@Operation(summary = "카카오 로그인 시작", description = "카카오 인가 페이지로 302 Redirect")
 	@ApiResponse(responseCode = "302", description = "redirect_to_kakao_authorize")
 	@InternalServerErrorResponse
 	@GetMapping("/login")
-	public ResponseEntity<Void> login() {
+	public ResponseEntity<ApiResult<KakaoLoginResponse>> login() {
 		String state = kakaoAuthService.issueState();
 		String loginUrl = kakaoAuthService.buildAuthorizeUrl(state);
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.setLocation(URI.create(loginUrl));
-		return new ResponseEntity<>(headers, HttpStatus.FOUND);
+		KakaoLoginResponse data = new KakaoLoginResponse(loginUrl);
+		return new ResponseEntity<>(ApiResult.of("redirect_to_kakao_authorize", data), headers, HttpStatus.FOUND);
 	}
 
 
@@ -51,19 +66,11 @@ public class KakaoAuthController {
 	@ApiResponse(responseCode = "302", description = "login_success_redirect_to_...")
 	@CommonAuthErrorResponses
 	@GetMapping("/auth-code")
-	public ResponseEntity<Void> authCode(@ParameterObject KakaoAuthCodeRequest request) {
+	public ResponseEntity<ApiResult<KakaoAuthCallbackResponse>> authCode(@ParameterObject KakaoAuthCodeRequest request) {
 		String error = request.error();
 		String errorDescription = request.errorDescription();
 		String state = request.state();
 		String code = request.code();
-
-		log.info(
-			"Kakao auth-code callback. state={}, code={}, error={}, errorDescription={}",
-			state,
-			code,
-			error,
-			errorDescription
-		);
 
 		if (error != null) {
 			String detail = errorDescription != null ? errorDescription : error;
@@ -78,17 +85,15 @@ public class KakaoAuthController {
 
 		KakaoTokenResponse tokenResponse = kakaoAuthService.requestToken(code);
 		KakaoUserInfo userInfo = kakaoAuthService.requestUserInfo(tokenResponse.accessToken());
-		log.info("Kakao user info raw={}", userInfo.raw());
-		log.info(
-			"Kakao profile id={}, nickname={}, thumbnailImageUrl={}, profileImageUrl={}",
-			userInfo.id(),
-			userInfo.nickname(),
-			userInfo.thumbnailImageUrl(),
-			userInfo.profileImageUrl()
-		);
+		Member member = kakaoMemberService.findOrCreateMember(userInfo);
 
 		HttpHeaders headers = new HttpHeaders();
+		String accessToken = jwtTokenProvider.createAccessToken(member);
+		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(accessToken).toString());
 		headers.setLocation(URI.create("/"));
-		return new ResponseEntity<>(headers, HttpStatus.FOUND);
+
+		KakaoAuthCallbackResponse data = new KakaoAuthCallbackResponse("/", member.getStatus().name());
+		log.info("Member linked. id={}, status={}", member.getId(), member.getStatus());
+		return new ResponseEntity<>(ApiResult.of("login_success_redirect", data), headers, HttpStatus.FOUND);
 	}
 }

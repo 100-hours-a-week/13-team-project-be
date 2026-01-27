@@ -31,9 +31,16 @@ kakao:
     client-secret: ${KAKAO_CLIENT_SECRET:}
     redirect-uri: ${KAKAO_REDIRECT_URI:}
 
+jwt:
+  secret: ${JWT_SECRET:}
+  issuer: ${JWT_ISSUER:matchimban}
+  access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:60}
+  cookie-name: ${JWT_COOKIE_NAME:access_token}
+  cookie-secure: ${JWT_COOKIE_SECURE:false}
+  cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
+
 management:
   endpoints:
     web:
       exposure:
         include: health
-

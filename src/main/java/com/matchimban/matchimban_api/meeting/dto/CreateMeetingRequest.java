@@ -55,10 +55,10 @@ public class CreateMeetingRequest {
     private LocalDateTime voteDeadlineAt;
 
     @Schema(description = "고깃집 제외 여부")
-    private boolean isExceptMeat;
+    private boolean exceptMeat;
 
     @Schema(description = "술집 제외 여부")
-    private boolean isExceptBar;
+    private boolean exceptBar;
 
     @Schema(description = "스와이프 수")
     @Min(1)
@@ -66,5 +66,5 @@ public class CreateMeetingRequest {
     private int swipeCount;
 
     @Schema(description = "퀵 모임 여부")
-    private boolean isQuickMeeting;
+    private boolean quickMeeting;
 }

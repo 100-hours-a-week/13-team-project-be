@@ -85,4 +85,40 @@ public class Meeting {
 
     @Column(name = "host_member_id", nullable = false)
     private Long hostMemberId;
+
+    public void delete() {
+        this.isDeleted = true;
+    }
+
+    public void update(
+            String title,
+            LocalDateTime scheduledAt,
+            LocalDateTime voteDeadlineAt,
+            String locationAddress,
+            BigDecimal locationLat,
+            BigDecimal locationLng,
+            Integer targetHeadcount,
+            Integer searchRadiusM,
+            Integer swipeCount,
+            Boolean exceptMeat,
+            Boolean exceptBar,
+            Boolean quickMeeting
+    ) {
+        if (title != null) this.title = title;
+        if (scheduledAt != null) this.scheduledAt = scheduledAt;
+        if (voteDeadlineAt != null) this.voteDeadlineAt = voteDeadlineAt;
+
+        if (locationAddress != null) this.locationAddress = locationAddress;
+        if (locationLat != null) this.locationLat = locationLat;
+        if (locationLng != null) this.locationLng = locationLng;
+
+        if (targetHeadcount != null) this.targetHeadcount = targetHeadcount;
+        if (searchRadiusM != null) this.searchRadiusM = searchRadiusM;
+        if (swipeCount != null) this.swipeCount = swipeCount;
+
+        if (exceptMeat != null) this.isExceptMeat = isExceptMeat;
+        if (exceptBar != null) this.isExceptBar = isExceptBar;
+        if (quickMeeting != null) this.isQuickMeeting = isQuickMeeting;
+    }
+
 }

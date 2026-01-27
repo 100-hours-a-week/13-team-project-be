@@ -12,13 +12,17 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "oauth_accounts")
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class OAuthAccount {
 
 	@Id
@@ -29,13 +33,13 @@ public class OAuthAccount {
 	@Column(name = "created_at")
 	private LocalDateTime createdAt;
 
-	@Column(name = "provider_user_id", length = 32, nullable = false)
-	private String providerUserId;
+	@Column(name = "provider_member_id", length = 32, nullable = false)
+	private String providerMemberId;
 
 	@Column(length = 10, nullable = false)
 	private String provider;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", nullable = false)
-	private User user;
+	@JoinColumn(name = "member_id", nullable = false)
+	private Member member;
 }

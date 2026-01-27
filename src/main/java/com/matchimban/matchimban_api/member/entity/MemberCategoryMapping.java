@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.member.entity;
 
+import com.matchimban.matchimban_api.member.entity.enums.MemberCategoryRelationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,13 +14,17 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "member_category_mapping")
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class MemberCategoryMapping {
 
 	@Id
@@ -40,6 +45,6 @@ public class MemberCategoryMapping {
 	private FoodCategory category;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", nullable = false)
-	private User user;
+	@JoinColumn(name = "member_id", nullable = false)
+	private Member member;
 }

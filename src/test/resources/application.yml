@@ -8,3 +8,11 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+
+jwt:
+  secret: "test-jwt-secret-key-32bytes-minimum!!"
+  issuer: "matchimban-test"
+  access-token-expire-minutes: 60
+  cookie-name: "access_token"
+  cookie-secure: false
+  cookie-same-site: "Lax"

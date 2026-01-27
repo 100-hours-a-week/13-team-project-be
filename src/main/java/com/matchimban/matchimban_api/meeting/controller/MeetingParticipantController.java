@@ -3,7 +3,6 @@ package com.matchimban.matchimban_api.meeting.controller;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingRequest;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.service.MeetingParticipationService;
-import com.matchimban.matchimban_api.meeting.service.MeetingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

@@ -1,7 +1,7 @@
 package com.matchimban.matchimban_api.meeting.controller;
 
-import com.matchimban.matchimban_api.meeting.dto.CreateMeetingRequest;
-import com.matchimban.matchimban_api.meeting.dto.CreateMeetingResponse;
+import com.matchimban.matchimban_api.meeting.dto.*;
+import com.matchimban.matchimban_api.meeting.service.MeetingReadService;
 import com.matchimban.matchimban_api.meeting.service.MeetingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class MeetingController {
 
     private final MeetingService meetingService;
+    private final MeetingReadService meetingReadService;
 
     @Operation(summary = "모임 생성", description = "모임 생성하고 inviteCode 반환")
     @ApiResponse(responseCode = "201", description = "created")
@@ -30,4 +31,56 @@ public class MeetingController {
         CreateMeetingResponse response = meetingService.createMeeting(memberId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @Operation(summary = "내 모임 목록 조회", description = "참여 중인 모임 목록 조회")
+    @GetMapping
+    public ResponseEntity<MyMeetingsResponse> getMyMeetings(
+            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(meetingReadService.getMyMeetings(memberId, cursor, size));
+    }
+
+    @Operation(summary = "모임 상세 조회", description = "특정 모임의 상세 정보 조회")
+    @GetMapping("/{meetingId}")
+    public ResponseEntity<MeetingDetailResponse> getMeetingDetail(
+            @RequestParam Long memberId,
+            @PathVariable Long meetingId
+    ) {
+        return ResponseEntity.ok(meetingReadService.getMeetingDetail(memberId, meetingId));
+    }
+
+    @Operation(summary = "모임 수정", description = "모임 정보를 부분 수정(호스트만 가능)")
+    @PatchMapping("/{meetingId}")
+    public ResponseEntity<UpdateMeetingResponse> updateMeeting(
+            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @PathVariable Long meetingId,
+            @Valid @RequestBody UpdateMeetingRequest request
+    ) {
+        return ResponseEntity.ok(meetingService.updateMeeting(memberId, meetingId, request));
+    }
+
+    @Operation(summary = "모임 탈퇴", description = "현재 사용자가 모임 탈퇴(호스트는 불가)")
+    @ApiResponse(responseCode = "204", description = "No Content")
+    @DeleteMapping("/{meetingId}/members/me")
+    public ResponseEntity<Void> leaveMeeting(
+            @RequestParam Long memberId, // TODO: JWT로 구현 시 수정
+            @PathVariable Long meetingId
+    ) {
+        meetingService.leaveMeeting(memberId, meetingId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "모임 삭제", description = "모임 삭제(soft delete), (호스트만 가능)")
+    @ApiResponse(responseCode = "204", description = "No Content")
+    @DeleteMapping("/{meetingId}")
+    public ResponseEntity<Void> deleteMeeting(
+            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @PathVariable Long meetingId
+    ) {
+        meetingService.deleteMeeting(memberId, meetingId);
+        return ResponseEntity.noContent().build();
+    }
+
 }

@@ -8,6 +8,9 @@ import lombok.Getter;
 @AllArgsConstructor
 public class CreateMeetingResponse {
 
+    @Schema(description = "생성된 모임 ID")
     private Long meetingId;
+
+    @Schema(description = "초대 코드")
     private String inviteCode;
 }
