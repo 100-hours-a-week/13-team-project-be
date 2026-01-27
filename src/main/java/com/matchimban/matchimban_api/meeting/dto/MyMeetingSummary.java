@@ -21,10 +21,10 @@ public class MyMeetingSummary {
     private LocalDateTime scheduledAt;
 
     @Schema(description = "현재 참여자 수")
-    private int participantCount;
+    private Long participantCount;
 
     @Schema(description = "목표 인원")
-    private int targetHeadcount;
+    private Integer targetHeadcount;
 
     @Schema(description = "모임 상태")
     private MeetingStatus meetingStatus;

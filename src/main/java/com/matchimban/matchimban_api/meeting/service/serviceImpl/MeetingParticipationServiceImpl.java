@@ -95,7 +95,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
     private void validateLeaveAllowedByVoteState(Long meetingId) {
         voteRepository.findTopByMeetingIdOrderByRoundDesc(meetingId)
                 .ifPresent(vote -> {
-                    VoteStatus state = vote.getState();
+                    VoteStatus state = vote.getStatus();
                     if (state == VoteStatus.GENERATING
                             || state == VoteStatus.OPEN
                             || state == VoteStatus.COUNTING) {

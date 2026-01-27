@@ -13,7 +13,7 @@ public class MyMeetingRow {
     private Long meetingId;
     private String title;
     private LocalDateTime scheduledAt;
-    private int participantCount;
-    private int targetHeadcount;
+    private Long participantCount;
+    private Integer targetHeadcount;
     private VoteStatus voteStatus;
 }

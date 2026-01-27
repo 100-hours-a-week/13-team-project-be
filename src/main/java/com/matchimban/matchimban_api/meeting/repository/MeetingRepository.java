@@ -50,7 +50,7 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                 and v.round = (select max(v2.round) from Vote v2 where v2.meeting = m)
             ),
 
-            (select v.state
+            (select v.status
                from Vote v
               where v.meeting = m
                 and v.round = (select max(v2.round) from Vote v2 where v2.meeting = m)

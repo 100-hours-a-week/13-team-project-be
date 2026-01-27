@@ -26,7 +26,7 @@ public class Vote {
     private short round;
 
     @Enumerated(EnumType.STRING)
-    private VoteStatus state;
+    private VoteStatus status;
 
     private LocalDateTime generatedAt;
     private LocalDateTime countedAt;
