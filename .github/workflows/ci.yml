@@ -17,8 +17,8 @@ on:
     branches: [main]
 
 env:
-  JAVA_VERSION: '21'
-  JAVA_DISTRIBUTION: 'temurin'
+  JAVA_VERSION: "21"
+  JAVA_DISTRIBUTION: "temurin"
 
 jobs:
   # ===========================================================================
@@ -219,5 +219,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: application-jar
-          path: build/libs/*.jar
+          path: |
+            build/libs/*.jar
+            !build/libs/*-plain.jar
           retention-days: 30
