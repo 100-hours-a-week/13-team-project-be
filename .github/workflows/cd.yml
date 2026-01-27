@@ -69,43 +69,17 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             cd ${{ env.DEPLOY_PATH }}
-            mkdir -p logs
+            
+            # Restart Service (env.conf already exists)
+            echo "서비스 재시작..."
+            sudo systemctl restart moyeobab-api
 
-            PID=\$(pgrep -f "${{ env.JAR_NAME }}" || true)
-            if [ -n "\$PID" ]; then
-              echo "프로세스 종료 중... (PID: \$PID)"
-              kill -15 \$PID
-
-              for i in {1..30}; do
-                if ! ps -p \$PID > /dev/null 2>&1; then
-                  echo "정상 종료"
-                  break
-                fi
-                sleep 1
-              done
-
-              if ps -p \$PID > /dev/null 2>&1; then
-                kill -9 \$PID
-                sleep 2
-              fi
-            fi
-
-            export DB_URL="${{ secrets.DB_URL }}"
-            export DB_USERNAME="${{ secrets.DB_USERNAME }}"
-            export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
-            export REDIS_HOST="${{ secrets.REDIS_HOST }}"
-            export REDIS_PORT="${{ secrets.REDIS_PORT }}"
-            export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
-
-            nohup java -jar ${{ env.JAR_NAME }} > logs/app.log 2>&1 &
-            disown
-
-            sleep 15
-
-            if pgrep -f "${{ env.JAR_NAME }}" > /dev/null; then
-              echo "배포 완료 - 프로세스 실행 중"
+            # Check status
+            if systemctl is-active --quiet moyeobab-api; then
+              echo "배포 완료 - 서비스 실행 중"
             else
-              echo "배포 실패 - 프로세스가 실행되지 않음"
+              echo "배포 실패 - 서비스 실행 실패"
+              systemctl status moyeobab-api --no-pager
               exit 1
             fi
           EOF
@@ -117,12 +91,13 @@ jobs:
           MAX_RETRY=10
           RETRY_INTERVAL=5
 
-          for i in $(seq 1 $MAX_RETRY); do
+          for i in $(seq 1 $MAX_RETRY);
+          do
             echo "Smoke Test $i/$MAX_RETRY..."
 
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
               --max-time 10 \
-              http://${{ secrets.EC2_HOST }}:8080/actuator/health || echo "000")
+              https://api.moyeobab.com/actuator/health || echo "000")
 
             echo "HTTP Code: $HTTP_CODE"
 
@@ -141,68 +116,120 @@ jobs:
       - name: Rollback on Failure
         if: failure() && steps.smoke_test.outcome == 'failure'
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
-            cd ${{ env.DEPLOY_PATH }}
-
-            PID=\$(pgrep -f "${{ env.JAR_NAME }}" || true)
-            if [ -n "\$PID" ]; then
-              kill -9 \$PID
-              sleep 2
-            fi
-
-            if [ -f "${{ env.BACKUP_PATH }}/${{ env.JAR_NAME }}.backup" ]; then
-              cp ${{ env.BACKUP_PATH }}/${{ env.JAR_NAME }}.backup ${{ env.DEPLOY_PATH }}/${{ env.JAR_NAME }}
-
-              export DB_URL="${{ secrets.DB_URL }}"
-              export DB_USERNAME="${{ secrets.DB_USERNAME }}"
-              export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
-              export REDIS_HOST="${{ secrets.REDIS_HOST }}"
-              export REDIS_PORT="${{ secrets.REDIS_PORT }}"
-              export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
-
-              nohup java -jar ${{ env.JAR_NAME }} > logs/app.log 2>&1 &
-              disown
-
-              sleep 15
-              echo "롤백 완료"
-            else
-              echo "백업 파일 없음 (최초 배포)"
-            fi
-          EOF
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            echo '롤백을 시작합니다...' &&
+            [ -f ${{ env.BACKUP_PATH }}/${{ env.JAR_NAME }}.backup ] &&
+            cp ${{ env.BACKUP_PATH }}/${{ env.JAR_NAME }}.backup ${{ env.DEPLOY_PATH }}/${{ env.JAR_NAME }} &&
+            sudo systemctl restart moyeobab-api &&
+            echo '롤백 완료: 이전 버전으로 복구되었습니다.' ||
+            echo '롤백 실패: 백업 파일을 찾을 수 없습니다.'
+          "
 
       # ===== Stage 5: 알림 =====
       - name: Notify Success
         if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TITLE: "🚀 배포 성공: moyeobab-api"
+          DESCRIPTION: "새로운 버전이 EC2 서버에 정상적으로 배포되었습니다."
+          COLOR: 3066993
+          URL: ${{ github.event.workflow_run.html_url }}
+          COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
+          AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
+          RUN_NUM: ${{ github.event.workflow_run.run_number }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d '{
-              "embeds": [{
-                "title": "BE 배포 완료",
-                "color": 5763719,
-                "fields": [
-                  {"name": "브랜치", "value": "main", "inline": true},
-                  {"name": "CI Run", "value": "#${{ github.event.workflow_run.run_number }}", "inline": true}
-                ],
-                "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
-              }]
-            }' \
-            ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-      - name: Notify Failure
-        if: failure()
-        run: |
-          curl -H "Content-Type: application/json" \
-            -d '{
-              "embeds": [{
-                "title": "BE 배포 실패",
-                "description": "롤백이 실행되었습니다.",
-                "color": 15548997,
-                "fields": [
-                  {"name": "브랜치", "value": "main", "inline": true},
-                  {"name": "CI Run", "value": "#${{ github.event.workflow_run.run_number }}", "inline": true},
-                  {"name": "로그", "value": "[확인하기](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "inline": false}
+          jq -n \
+            --arg title "$TITLE" \
+            --arg desc "$DESCRIPTION" \
+            --arg url "$URL" \
+            --arg color "$COLOR" \
+            --arg msg "$COMMIT_MSG" \
+            --arg author "$AUTHOR" \
+            --arg run_num "$RUN_NUM" \
+            --arg ts "$TIMESTAMP" \
+            '{
+              username: "Moyeobab Deploy Bot",
+              avatar_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+              embeds: [{
+                title: $title,
+                url: $url,
+                description: $desc,
+                color: ($color | tonumber),
+                fields: [
+                  {name: "🌿 브랜치", value: "main", inline: true},
+                  {name: "🔢 빌드 번호", value: ("#" + $run_num), inline: true},
+                  {name: "👤 작성자", value: $author, inline: true},
+                  {name: "📝 커밋 메시지", value: $msg, inline: false}
                 ],
-                "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+                footer: {
+                  text: "Powered by Systemd & Github Actions",
+                  icon_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+                },
+                timestamp: $ts
               }]
-            }' \
-            ${{ secrets.DISCORD_WEBHOOK_URL }}
+            }' > payload.json
+
+          curl -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
+
+      - name: Notify Rollback Success
+        if: failure() && steps.smoke_test.outcome == 'failure'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TITLE: "🔄 배포 실패 (롤백 성공)"
+          DESCRIPTION: "배포 중 오류가 발생했으나, **자동 롤백**이 성공하여 서비스는 안전합니다."
+          COLOR: 16753920
+          URL: ${{ github.event.workflow_run.html_url }}
+          COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
+        run: |
+          jq -n \
+            --arg title "$TITLE" \
+            --arg desc "$DESCRIPTION" \
+            --arg url "$URL" \
+            --arg color "$COLOR" \
+            --arg msg "$COMMIT_MSG" \
+            '{
+              username: "Moyeobab Deploy Bot",
+              avatar_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+              embeds: [{
+                title: $title,
+                description: $desc,
+                url: $url,
+                color: ($color | tonumber),
+                fields: [
+                  {name: "상태", value: "⚠️ 배포는 실패했으나 이전 버전으로 복구됨", inline: false},
+                  {name: "원인 커밋", value: $msg, inline: false}
+                ]
+              }]
+            }' > payload.json
+          curl -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
+
+      - name: Notify Critical Failure
+        if: failure() && steps.smoke_test.outcome != 'failure'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TITLE: "🚨 CRITICAL: 배포/롤백 치명적 실패"
+          DESCRIPTION: "배포 파이프라인이 심각한 오류로 중단되었습니다. **서비스 다운 가능성**이 높으니 즉시 확인이 필요합니다."
+          COLOR: 15158332
+          URL: ${{ github.event.workflow_run.html_url }}
+        run: |
+          jq -n \
+            --arg title "$TITLE" \
+            --arg desc "$DESCRIPTION" \
+            --arg url "$URL" \
+            --arg color "$COLOR" \
+            '{
+              username: "Moyeobab Deploy Bot",
+              avatar_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+              embeds: [{
+                title: $title,
+                description: $desc,
+                url: $url,
+                color: ($color | tonumber),
+                fields: [
+                  {name: "긴급 조치 필요", value: "서버 상태를 수동으로 확인해주세요.", inline: false}
+                ]
+              }]
+            }' > payload.json
+          curl -H "Content-Type: application/json" -d @payload.json "$DISCORD_WEBHOOK"
