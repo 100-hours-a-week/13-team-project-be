@@ -54,7 +54,9 @@ CREATE TABLE oauth_accounts (
     provider VARCHAR(10) NOT NULL,
     member_id BIGINT NOT NULL,
     CONSTRAINT fk_oauth_accounts_member
-        FOREIGN KEY (member_id) REFERENCES members(id)
+        FOREIGN KEY (member_id) REFERENCES members(id),
+    CONSTRAINT uk_oauth_accounts_provider_member UNIQUE (provider, provider_member_id),
+    CONSTRAINT uk_oauth_accounts_provider_member_id UNIQUE (provider, member_id)
 );
 
 -- member_agreements
@@ -78,7 +80,8 @@ CREATE TABLE member_category_mapping (
     CONSTRAINT fk_member_category_mapping_category
         FOREIGN KEY (category_id) REFERENCES food_category(id),
     CONSTRAINT fk_member_category_mapping_member
-        FOREIGN KEY (member_id) REFERENCES members(id)
+        FOREIGN KEY (member_id) REFERENCES members(id),
+    CONSTRAINT uk_member_category_mapping UNIQUE (member_id, category_id)
 );
 
 -- meetings
