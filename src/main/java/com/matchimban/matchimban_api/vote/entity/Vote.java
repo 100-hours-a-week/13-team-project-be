@@ -31,10 +31,6 @@ public class Vote {
     private LocalDateTime generatedAt;
     private LocalDateTime countedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "meeting_id")
-    private Meeting meeting;
-
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -42,4 +38,37 @@ public class Vote {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "meeting_id")
+    private Meeting meeting;
+
+    public void markGenerating() {
+        this.status = VoteStatus.GENERATING;
+        this.generatedAt = null;
+        this.countedAt = null;
+    }
+
+    public void markOpen(LocalDateTime generatedAt) {
+        this.status = VoteStatus.OPEN;
+        this.generatedAt = generatedAt;
+    }
+
+    public void markReserved(LocalDateTime generatedAt) {
+        this.status = VoteStatus.RESERVED;
+        this.generatedAt = generatedAt;
+    }
+
+    public void markCounting() {
+        this.status = VoteStatus.COUNTING;
+    }
+
+    public void markCounted(LocalDateTime countedAt) {
+        this.status = VoteStatus.COUNTED;
+        this.countedAt = countedAt;
+    }
+
+    public void markFailed() {
+        this.status = VoteStatus.FAILED;
+    }
 }

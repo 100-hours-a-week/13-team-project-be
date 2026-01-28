@@ -65,10 +65,10 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         if (voteStatus == null) return MeetingStatus.READY;
 
         return switch (voteStatus) {
-            case GENERATING -> MeetingStatus.READY;
+            case GENERATING, RESERVED -> MeetingStatus.READY;
             case OPEN, COUNTING -> MeetingStatus.VOTING;
             case COUNTED -> MeetingStatus.DONE;
-            case FAILED -> MeetingStatus.READY; // 실패는 완료가 아니므로 READY로 환원(재시도 UX)
+            case FAILED -> MeetingStatus.READY;
         };
     }
 

@@ -22,7 +22,7 @@ public class MeetingFinalSelection {
     @SequenceGenerator(
             name = "meeting_final_selections_seq_gen",
             sequenceName = "meeting_final_selections_seq",
-            allocationSize = 50
+            allocationSize = 1
     )
     private Long id;
 
