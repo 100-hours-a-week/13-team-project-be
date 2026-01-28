@@ -48,6 +48,7 @@ public class SecurityConfig {
 					"/v3/api-docs/**",
 					"/swagger-ui.html",
 					"/api/v1/auth/**",
+					"/api/csrf",
 					"/api/ping",
 					"/actuator/health"
 				)

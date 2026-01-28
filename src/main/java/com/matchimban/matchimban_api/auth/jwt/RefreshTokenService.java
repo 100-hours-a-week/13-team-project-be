@@ -85,6 +85,16 @@ public class RefreshTokenService {
 		redisTemplate.delete(buildKey(memberId, sid));
 	}
 
+	public void revokeAll(Long memberId) {
+		// memberId 기준으로 모든 세션 키를 찾아 일괄 폐기한다.
+		String pattern = KEY_PREFIX + memberId + ":*";
+		var keys = redisTemplate.keys(pattern);
+		if (keys == null || keys.isEmpty()) {
+			return;
+		}
+		redisTemplate.delete(keys);
+	}
+
 	private String buildKey(Long memberId, String sid) {
 		return KEY_PREFIX + memberId + ":" + sid;
 	}

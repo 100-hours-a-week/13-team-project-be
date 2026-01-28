@@ -4,4 +4,6 @@ import com.matchimban.matchimban_api.member.dto.response.MemberMeResponse;
 
 public interface MemberService {
 	MemberMeResponse getMyInfo(Long memberId);
+
+	void withdraw(Long memberId);
 }

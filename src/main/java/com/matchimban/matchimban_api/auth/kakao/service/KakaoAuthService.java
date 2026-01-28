@@ -14,4 +14,6 @@ public interface KakaoAuthService {
 
 	KakaoUserInfo requestUserInfo(String accessToken);
 
+	void unlinkByAdminKey(String providerMemberId);
+
 }

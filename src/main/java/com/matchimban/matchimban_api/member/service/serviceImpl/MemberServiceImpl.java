@@ -1,14 +1,19 @@
 package com.matchimban.matchimban_api.member.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
+import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
 import com.matchimban.matchimban_api.member.dto.response.MemberMeResponse;
 import com.matchimban.matchimban_api.member.dto.response.MemberPreferencesResponse;
 import com.matchimban.matchimban_api.member.dto.response.PreferenceItemResponse;
 import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.member.entity.MemberCategoryMapping;
+import com.matchimban.matchimban_api.member.entity.OAuthAccount;
 import com.matchimban.matchimban_api.member.entity.enums.MemberCategoryRelationType;
+import com.matchimban.matchimban_api.member.entity.enums.MemberStatus;
 import com.matchimban.matchimban_api.member.repository.MemberCategoryMappingRepository;
 import com.matchimban.matchimban_api.member.repository.MemberRepository;
+import com.matchimban.matchimban_api.member.repository.OAuthAccountRepository;
 import com.matchimban.matchimban_api.member.service.MemberService;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -20,16 +25,26 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MemberServiceImpl implements MemberService {
+	private static final String PROVIDER_KAKAO = "KAKAO";
 
 	private final MemberRepository memberRepository;
 	private final MemberCategoryMappingRepository memberCategoryMappingRepository;
+	private final OAuthAccountRepository oauthAccountRepository;
+	private final KakaoAuthService kakaoAuthService;
+	private final RefreshTokenService refreshTokenService;
 
 	public MemberServiceImpl(
 		MemberRepository memberRepository,
-		MemberCategoryMappingRepository memberCategoryMappingRepository
+		MemberCategoryMappingRepository memberCategoryMappingRepository,
+		OAuthAccountRepository oauthAccountRepository,
+		KakaoAuthService kakaoAuthService,
+		RefreshTokenService refreshTokenService
 	) {
 		this.memberRepository = memberRepository;
 		this.memberCategoryMappingRepository = memberCategoryMappingRepository;
+		this.oauthAccountRepository = oauthAccountRepository;
+		this.kakaoAuthService = kakaoAuthService;
+		this.refreshTokenService = refreshTokenService;
 	}
 
 	@Override
@@ -75,5 +90,29 @@ public class MemberServiceImpl implements MemberService {
 			member.getUpdatedAt(),
 			preferences
 		);
+	}
+
+	@Override
+	@Transactional
+	public void withdraw(Long memberId) {
+		// 1) 회원 존재 및 인증 확인
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
+
+		// 2) 이미 탈퇴 상태면 추가 처리 없이 종료
+		if (member.getStatus() == MemberStatus.DELETED) {
+			throw new ApiException(HttpStatus.CONFLICT, "already_withdrawn");
+		}
+
+		// 3) 내부 계정 soft delete 처리
+		member.updateStatus(MemberStatus.DELETED);
+		// 4) 모든 refresh 세션 폐기 (모든 기기 강제 로그아웃)
+		refreshTokenService.revokeAll(memberId);
+
+		// 5) 카카오 연결 해제 (provider에 따라 unlink)
+		OAuthAccount account = oauthAccountRepository.findByMemberId(memberId).orElse(null);
+		if (account != null && PROVIDER_KAKAO.equalsIgnoreCase(account.getProvider())) {
+			kakaoAuthService.unlinkByAdminKey(account.getProviderMemberId());
+		}
 	}
 }

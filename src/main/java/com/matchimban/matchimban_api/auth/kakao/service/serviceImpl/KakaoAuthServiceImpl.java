@@ -149,6 +149,45 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 		}
 	}
 
+	@Override
+	public void unlinkByAdminKey(String providerMemberId) {
+		// 관리자 키 방식으로 카카오 연결 해제 (토큰 폐기 + 동의 철회)
+		if (providerMemberId == null || providerMemberId.isBlank()) {
+			throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "providerMemberId is required");
+		}
+		if (properties.adminKey() == null || properties.adminKey().isBlank()) {
+			throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", "Missing Kakao admin key");
+		}
+
+		MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+		body.add("target_id_type", "user_id");
+		body.add("target_id", providerMemberId);
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+		headers.set("Authorization", "KakaoAK " + properties.adminKey());
+
+		HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+		try {
+			ResponseEntity<String> response = restTemplate.postForEntity(
+				properties.unlinkUrl(),
+				request,
+				String.class
+			);
+			// 카카오 응답이 2xx가 아니면 실패로 처리
+			if (!response.getStatusCode().is2xxSuccessful()) {
+				throw new ApiException(HttpStatus.BAD_GATEWAY, "kakao_unlink_failed");
+			}
+		} catch (RestClientResponseException ex) {
+			// 카카오 응답 바디를 포함해 에러로 전파
+			throw new ApiException(
+				HttpStatus.BAD_GATEWAY,
+				"kakao_unlink_failed",
+				ex.getResponseBodyAsString()
+			);
+		}
+	}
+
 	private void validateOauthConfig() {
 		if (properties.clientId() == null || properties.clientId().isBlank()
 			|| properties.redirectUri() == null || properties.redirectUri().isBlank()) {

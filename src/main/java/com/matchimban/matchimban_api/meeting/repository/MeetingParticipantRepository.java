@@ -96,4 +96,14 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
             @Param("memberId") Long memberId
     );
 
+    @Query("""
+        select mp.member.id
+        from MeetingParticipant mp
+        where mp.meeting.id = :meetingId
+          and mp.status = com.matchimban.matchimban_api.meeting.entity.MeetingParticipant.Status.ACTIVE
+        order by mp.createdAt asc, mp.id asc
+    """)
+    List<Long> findActiveMemberIds(@Param("meetingId") Long meetingId);
+
+
 }

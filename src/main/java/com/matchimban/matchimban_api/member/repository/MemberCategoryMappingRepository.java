@@ -16,4 +16,15 @@ public interface MemberCategoryMappingRepository extends JpaRepository<MemberCat
 		where m.member.id = :memberId
 		""")
 	List<MemberCategoryMapping> findByMemberIdWithCategory(@Param("memberId") Long memberId);
+
+    @Query("""
+        select m
+        from MemberCategoryMapping m
+        join fetch m.category c
+        where m.member.id in :memberIds
+          and c.categoryType = com.matchimban.matchimban_api.member.entity.enums.FoodCategoryType.CATEGORY
+    """)
+    List<MemberCategoryMapping> findByMemberIdsWithCategory(
+            @Param("memberIds") List<Long> memberIds
+    );
 }

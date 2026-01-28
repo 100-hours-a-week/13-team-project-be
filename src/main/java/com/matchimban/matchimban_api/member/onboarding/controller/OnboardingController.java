@@ -12,6 +12,7 @@ import com.matchimban.matchimban_api.member.onboarding.dto.error.MissingAgreemen
 import com.matchimban.matchimban_api.member.onboarding.dto.error.ValidationErrorData;
 import com.matchimban.matchimban_api.member.onboarding.dto.request.AgreementConsentRequest;
 import com.matchimban.matchimban_api.member.onboarding.dto.request.PreferencesSaveRequest;
+import com.matchimban.matchimban_api.member.onboarding.dto.response.AgreementConsentData;
 import com.matchimban.matchimban_api.member.onboarding.dto.response.AgreementDetailResponse;
 import com.matchimban.matchimban_api.member.onboarding.dto.response.AgreementListResponse;
 import com.matchimban.matchimban_api.member.onboarding.dto.response.PreferencesChoicesResponse;
@@ -103,9 +104,10 @@ public class OnboardingController {
 		String accessToken = jwtTokenProvider.createAccessToken(member, principal.sid());
 		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(accessToken).toString());
 
+		AgreementConsentData data = new AgreementConsentData(member.getStatus().name());
 		return ResponseEntity.ok()
 			.headers(headers)
-			.body(ApiResult.of("agreements_accepted"));
+			.body(ApiResult.of("agreements_accepted", data));
 	}
 
 	@GetMapping("/preferences/choices")

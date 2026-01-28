@@ -27,9 +27,12 @@ kakao:
     authorize-url: ${KAKAO_AUTHORIZE_URL:https://kauth.kakao.com/oauth/authorize}
     token-url: ${KAKAO_TOKEN_URL:https://kauth.kakao.com/oauth/token}
     user-info-url: ${KAKAO_USER_INFO_URL:https://kapi.kakao.com/v2/user/me}
+    unlink-url: ${KAKAO_UNLINK_URL:https://kapi.kakao.com/v1/user/unlink}
     client-id: ${KAKAO_CLIENT_ID:}
     client-secret: ${KAKAO_CLIENT_SECRET:}
     redirect-uri: ${KAKAO_REDIRECT_URI:}
+    frontend-redirect-url: ${KAKAO_FRONTEND_REDIRECT_URL:/}
+    admin-key: ${KAKAO_ADMIN_KEY:}
 
 jwt:
   secret: ${JWT_SECRET:}
@@ -46,3 +49,7 @@ management:
     web:
       exposure:
         include: health
+
+ai-recommendation:
+  base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000}
+  timeout-ms: 5000

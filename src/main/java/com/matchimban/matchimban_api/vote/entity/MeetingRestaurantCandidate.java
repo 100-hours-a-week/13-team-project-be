@@ -44,6 +44,9 @@ public class MeetingRestaurantCandidate {
 
     private BigDecimal rating;
 
+    @Column(name = "ai_score", precision = 6, scale = 5)
+    private BigDecimal aiScore;
+
     @Column(name = "result_rank")
     private Integer resultRank;
 
@@ -58,4 +61,14 @@ public class MeetingRestaurantCandidate {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public void applyCounts(int like, int dislike, int neutral) {
+        this.likeCount = like;
+        this.dislikeCount = dislike;
+        this.neutralCount = neutral;
+    }
+    public void applyResultRank(int resultRank) {
+        this.resultRank = resultRank;
+    }
+
 }

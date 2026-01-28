@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.auth.kakao.controller;
 
+import com.matchimban.matchimban_api.auth.kakao.config.KakaoOAuthProperties;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoAuthCodeRequest;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoAuthCallbackResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoLoginResponse;
@@ -39,17 +40,20 @@ public class KakaoAuthController {
 	private final KakaoMemberService kakaoMemberService;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final RefreshTokenService refreshTokenService;
+	private final KakaoOAuthProperties kakaoOAuthProperties;
 
 	public KakaoAuthController(
 		KakaoAuthService kakaoAuthService,
 		KakaoMemberService kakaoMemberService,
 		JwtTokenProvider jwtTokenProvider,
-		RefreshTokenService refreshTokenService
+		RefreshTokenService refreshTokenService,
+		KakaoOAuthProperties kakaoOAuthProperties
 	) {
 		this.kakaoAuthService = kakaoAuthService;
 		this.kakaoMemberService = kakaoMemberService;
 		this.jwtTokenProvider = jwtTokenProvider;
 		this.refreshTokenService = refreshTokenService;
+		this.kakaoOAuthProperties = kakaoOAuthProperties;
 	}
 
 	@Operation(summary = "카카오 로그인 시작", description = "카카오 인가 페이지로 302 Redirect")
@@ -98,9 +102,13 @@ public class KakaoAuthController {
 		String refreshToken = refreshTokenService.issue(member.getId(), sid, null);
 		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(accessToken).toString());
 		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createRefreshTokenCookie(refreshToken).toString());
-		headers.setLocation(URI.create("/"));
+		String redirectUrl = kakaoOAuthProperties.frontendRedirectUrl();
+		if (redirectUrl == null || redirectUrl.isBlank()) {
+			redirectUrl = "/";
+		}
+		headers.setLocation(URI.create(redirectUrl));
 
-		KakaoAuthCallbackResponse data = new KakaoAuthCallbackResponse("/", member.getStatus().name());
+		KakaoAuthCallbackResponse data = new KakaoAuthCallbackResponse(redirectUrl, member.getStatus().name());
 		log.info("Member linked. id={}, status={}", member.getId(), member.getStatus());
 		return new ResponseEntity<>(ApiResult.of("login_success_redirect", data), headers, HttpStatus.FOUND);
 	}

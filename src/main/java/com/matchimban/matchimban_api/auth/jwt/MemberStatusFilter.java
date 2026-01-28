@@ -40,6 +40,7 @@ public class MemberStatusFilter extends OncePerRequestFilter {
 			|| path.startsWith("/v3/api-docs")
 			|| path.equals("/swagger-ui.html")
 			|| path.equals("/api/ping")
+			|| path.equals("/api/csrf")
 			|| path.equals("/actuator/health");
 	}
 

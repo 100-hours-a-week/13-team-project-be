@@ -6,6 +6,7 @@ import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
 import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.swagger.AuthRefreshErrorResponses;
 import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.member.entity.enums.MemberStatus;
@@ -13,6 +14,9 @@ import com.matchimban.matchimban_api.member.repository.MemberRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Auth", description = "인증 토큰 관리 API")
 public class AuthController {
 
 	private final JwtTokenProvider jwtTokenProvider;
@@ -43,6 +48,9 @@ public class AuthController {
 
 	@PostMapping("/refresh")
 	@CsrfRequired
+	@Operation(summary = "토큰 갱신", description = "리프레시 토큰을 검증하고 AT/RT를 교체한다.")
+	@ApiResponse(responseCode = "200", description = "token_refreshed")
+	@AuthRefreshErrorResponses
 	public ResponseEntity<ApiResult<?>> refresh(HttpServletRequest request) {
 		// refresh는 access(만료 허용) + refresh 쿠키가 둘 다 있어야 한다.
 		String accessToken = resolveCookie(request, jwtProperties.cookieName());
@@ -89,6 +97,8 @@ public class AuthController {
 
 	@PostMapping("/logout")
 	@CsrfRequired
+	@Operation(summary = "로그아웃", description = "현재 세션의 리프레시 토큰을 폐기하고 쿠키를 만료한다.")
+	@ApiResponse(responseCode = "200", description = "logout_success")
 	public ResponseEntity<ApiResult<?>> logout(HttpServletRequest request) {
 		String accessToken = resolveCookie(request, jwtProperties.cookieName());
 		if (accessToken != null) {
