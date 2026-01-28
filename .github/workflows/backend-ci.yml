@@ -7,7 +7,7 @@
 # 순서: Lint → Build → Static Analysis → Test → Artifact Upload
 # =============================================================================
 
-name: Backend CI
+name: Backend CI PIPELINE
 
 on:
   pull_request:
@@ -15,6 +15,15 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: be-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   JAVA_VERSION: "21"
@@ -223,3 +232,130 @@ jobs:
             build/libs/*.jar
             !build/libs/*-plain.jar
           retention-days: 30
+
+  # ===========================================================================
+  # Stage 6: Notify (알림)
+  # ===========================================================================
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [lint, build, static-analysis, test, artifact]
+    if: always()
+
+    steps:
+      - name: Prepare PR comment
+        id: pr_comment
+        if: github.event_name == 'pull_request'
+        run: |
+          status_icon() {
+            case "$1" in
+              success) echo "✅" ;;
+              failure) echo "❌" ;;
+              cancelled) echo "⚪" ;;
+              skipped) echo "⏭️" ;;
+              *) echo "❓" ;;
+            esac
+          }
+
+          lint_icon="$(status_icon "${{ needs.lint.result }}")"
+          build_icon="$(status_icon "${{ needs.build.result }}")"
+          analysis_icon="$(status_icon "${{ needs.static-analysis.result }}")"
+          test_icon="$(status_icon "${{ needs.test.result }}")"
+
+          overall="success"
+          for outcome in "${{ needs.lint.result }}" "${{ needs.build.result }}" "${{ needs.static-analysis.result }}" "${{ needs.test.result }}"; do
+            if [ "$outcome" = "failure" ] || [ "$outcome" = "cancelled" ]; then
+              overall="failure"
+              break
+            fi
+          done
+
+          if [ "$overall" = "success" ]; then
+            header="✅ **BE CI 검증 완료!**"
+          else
+            header="❌ **BE CI 검증 실패**"
+          fi
+
+          {
+            echo "message<<EOF"
+            echo "$header"
+            echo "- Lint (Checkstyle): $lint_icon"
+            echo "- Build: $build_icon"
+            echo "- Static Analysis (SpotBugs): $analysis_icon"
+            echo "- Test: $test_icon"
+            echo "- 실행 결과: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment PR status
+        if: github.event_name == 'pull_request'
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: ${{ steps.pr_comment.outputs.message }}
+          comment_tag: be_ci_status
+
+      - name: Notify Discord
+        if: github.event_name == 'push'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BRANCH: ${{ github.ref_name }}
+          RUN_NUM: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          LINT="${{ needs.lint.result }}"
+          BUILD="${{ needs.build.result }}"
+          ANALYSIS="${{ needs.static-analysis.result }}"
+          TEST="${{ needs.test.result }}"
+          ARTIFACT="${{ needs.artifact.result }}"
+
+          overall="success"
+          for result in "$LINT" "$BUILD" "$ANALYSIS" "$TEST" "$ARTIFACT"; do
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              overall="failure"
+              break
+            fi
+          done
+
+          if [ "$overall" = "success" ]; then
+            TITLE="BE CI 성공"
+            DESC="코드 검증이 완료되었습니다."
+            COLOR=3066993
+          else
+            TITLE="BE CI 실패"
+            DESC="코드 검증에 실패했습니다. 로그를 확인해주세요."
+            COLOR=15158332
+          fi
+
+          jq -n \
+            --arg title "$TITLE" \
+            --arg desc "$DESC" \
+            --arg color "$COLOR" \
+            --arg branch "$BRANCH" \
+            --arg run_num "$RUN_NUM" \
+            --arg lint "$LINT" \
+            --arg build "$BUILD" \
+            --arg analysis "$ANALYSIS" \
+            --arg test "$TEST" \
+            --arg artifact "$ARTIFACT" \
+            --arg url "$RUN_URL" \
+            '{
+              embeds: [{
+                title: $title,
+                description: $desc,
+                color: ($color | tonumber),
+                fields: [
+                  {name: "브랜치", value: $branch, inline: true},
+                  {name: "빌드", value: ("#" + $run_num), inline: true},
+                  {name: "Lint", value: $lint, inline: true},
+                  {name: "Build", value: $build, inline: true},
+                  {name: "SpotBugs", value: $analysis, inline: true},
+                  {name: "Test", value: $test, inline: true},
+                  {name: "Artifact", value: $artifact, inline: true},
+                  {name: "상세", value: ("[Actions 로그](" + $url + ")"), inline: false}
+                ],
+                footer: {
+                  text: "BE CI",
+                  icon_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+                }
+              }]
+            }' | curl -sf -X POST "$WEBHOOK" -H "Content-Type: application/json" -d @-
