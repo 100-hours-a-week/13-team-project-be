@@ -5,6 +5,7 @@ import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
 import com.matchimban.matchimban_api.global.error.ApiException;
 import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
+import com.matchimban.matchimban_api.global.swagger.MemberWithdrawErrorResponses;
 import com.matchimban.matchimban_api.member.dto.response.MemberMeResponse;
 import com.matchimban.matchimban_api.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,8 +48,9 @@ public class MemberController {
 
 	@DeleteMapping("/me")
 	@CsrfRequired
-	@Operation(summary = "회원 탈퇴", description = "회원 상태를 DELETED로 변경하고 연결을 해제한다.")
-	@ApiResponse(responseCode = "200", description = "member_deleted")
+	@Operation(summary = "회원 탈퇴", description = "회원 상태를 DELETED로 변경하고 카카오 연결을 해제한다.")
+	@ApiResponse(responseCode = "200", description = "withdraw_success")
+	@MemberWithdrawErrorResponses
 	public ResponseEntity<ApiResult<?>> withdraw() {
 		// 1) 인증된 사용자 확인
 		Long memberId = requireMemberId();
@@ -63,7 +65,7 @@ public class MemberController {
 		// 4) 탈퇴 완료 응답
 		return ResponseEntity.ok()
 			.headers(headers)
-			.body(ApiResult.of("member_deleted"));
+			.body(ApiResult.of("withdraw_success"));
 	}
 
 	private Long requireMemberId() {

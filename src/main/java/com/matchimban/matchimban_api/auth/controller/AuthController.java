@@ -6,6 +6,7 @@ import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
 import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.swagger.AuthRefreshErrorResponses;
 import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.member.entity.enums.MemberStatus;
@@ -49,6 +50,7 @@ public class AuthController {
 	@CsrfRequired
 	@Operation(summary = "토큰 갱신", description = "리프레시 토큰을 검증하고 AT/RT를 교체한다.")
 	@ApiResponse(responseCode = "200", description = "token_refreshed")
+	@AuthRefreshErrorResponses
 	public ResponseEntity<ApiResult<?>> refresh(HttpServletRequest request) {
 		// refresh는 access(만료 허용) + refresh 쿠키가 둘 다 있어야 한다.
 		String accessToken = resolveCookie(request, jwtProperties.cookieName());

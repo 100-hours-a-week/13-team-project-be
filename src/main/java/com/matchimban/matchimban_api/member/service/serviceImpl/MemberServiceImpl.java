@@ -101,7 +101,7 @@ public class MemberServiceImpl implements MemberService {
 
 		// 2) 이미 탈퇴 상태면 추가 처리 없이 종료
 		if (member.getStatus() == MemberStatus.DELETED) {
-			return;
+			throw new ApiException(HttpStatus.CONFLICT, "already_withdrawn");
 		}
 
 		// 3) 내부 계정 soft delete 처리
