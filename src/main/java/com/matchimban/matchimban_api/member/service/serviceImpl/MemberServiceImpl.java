@@ -111,8 +111,12 @@ public class MemberServiceImpl implements MemberService {
 
 		// 5) 카카오 연결 해제 (provider에 따라 unlink)
 		OAuthAccount account = oauthAccountRepository.findByMemberId(memberId).orElse(null);
-		if (account != null && PROVIDER_KAKAO.equalsIgnoreCase(account.getProvider())) {
-			kakaoAuthService.unlinkByAdminKey(account.getProviderMemberId());
+		if (account != null) {
+			if (PROVIDER_KAKAO.equalsIgnoreCase(account.getProvider())) {
+				kakaoAuthService.unlinkByAdminKey(account.getProviderMemberId());
+			}
+			// 재로그인 시 새 계정 생성되도록 연결 계정도 삭제
+			oauthAccountRepository.delete(account);
 		}
 	}
 }
