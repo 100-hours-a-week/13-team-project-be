@@ -33,7 +33,7 @@ public interface MeetingRestaurantCandidateRepository extends JpaRepository<Meet
         join c.restaurant r
         join r.foodCategory fc
         where c.vote.id = :voteId
-        order by c.baseRank asc, c.id asc
+        order by c.aiScore asc, c.id asc
     """)
     List<VoteCandidatesResponse.Candidate> findCandidateDtosByVoteId(@Param("voteId") Long voteId);
 
@@ -60,7 +60,7 @@ public interface MeetingRestaurantCandidateRepository extends JpaRepository<Meet
     @Query("""
         select new com.matchimban.matchimban_api.vote.dto.response.VoteResultsResponse$Item(
             c.id,
-            c.resultRank,
+            c.finalRank,
             r.name,
             r.imageUrl1,
             fc.categoryName,
@@ -74,8 +74,8 @@ public interface MeetingRestaurantCandidateRepository extends JpaRepository<Meet
         join c.restaurant r
         join r.foodCategory fc
         where c.vote.id = :voteId
-          and c.resultRank between 1 and 3
-        order by c.resultRank asc
+          and c.finalRank between 1 and 3
+        order by c.finalRank asc
     """)
     List<VoteResultsResponse.Item> findTop3ResultItems(@Param("voteId") Long voteId);
 

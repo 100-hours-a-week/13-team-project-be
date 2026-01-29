@@ -1,10 +1,12 @@
 package com.matchimban.matchimban_api.vote.ai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.matchimban.matchimban_api.global.error.ApiException;
 import com.matchimban.matchimban_api.vote.ai.dto.AiRecommendationRequest;
 import com.matchimban.matchimban_api.vote.ai.dto.AiRecommendationResponse;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -12,18 +14,21 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class RecommendationClient {
 
     private final WebClient recommendationWebClient;
+    private final ObjectMapper objectMapper;
 
     @Value("${ai-recommendation.timeout-ms:5000}")
     private long timeoutMs;
 
     public AiRecommendationResponse recommend(AiRecommendationRequest request) {
         return recommendationWebClient.post()
-                .uri("/api/v1/recommendations")
+                .uri("/recommendations")
                 .bodyValue(request)
                 .retrieve()
+
                 .onStatus(status -> status.isError(), resp ->
                         resp.bodyToMono(String.class).defaultIfEmpty("")
                                 .map(body -> {
@@ -33,8 +38,27 @@ public class RecommendationClient {
                                 })
                 )
 
-                .bodyToMono(AiRecommendationResponse.class)
+                .bodyToMono(String.class)
                 .timeout(Duration.ofMillis(timeoutMs))
+                .map(raw -> {
+                    log.info("[AI RAW RESP] {}", raw);
+
+                    try {
+                        AiRecommendationResponse parsed =
+                                objectMapper.readValue(raw, AiRecommendationResponse.class);
+
+                        int size = (parsed.getRestaurants() == null) ? 0 : parsed.getRestaurants().size();
+                        Long firstId = (size == 0) ? null : parsed.getRestaurants().get(0).getId();
+
+                        log.info("[AI PARSED RESP] requestId={}, topN={}, restaurants.size={}, firstId={}",
+                                parsed.getRequestId(), parsed.getTopN(), size, firstId);
+
+                        return parsed;
+                    } catch (Exception e) {
+                        throw new ApiException(HttpStatus.BAD_GATEWAY, "recommendation_failed",
+                                "Failed to parse AI response: " + e.getMessage() + " | raw=" + raw);
+                    }
+                })
                 .block();
     }
 
