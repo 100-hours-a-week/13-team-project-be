@@ -8,6 +8,7 @@ import com.matchimban.matchimban_api.meeting.repository.projection.MeetingDetail
 import com.matchimban.matchimban_api.meeting.repository.projection.MyMeetingRow;
 import com.matchimban.matchimban_api.meeting.service.MeetingReadService;
 import com.matchimban.matchimban_api.vote.entity.VoteStatus;
+import com.matchimban.matchimban_api.vote.repository.VoteSubmissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +25,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
 
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final MeetingRepository meetingRepository;
+    private final VoteSubmissionRepository voteSubmissionRepository;
 
     public MyMeetingsResponse getMyMeetings(Long memberId, Long cursor, int size) {
 
@@ -99,6 +101,11 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         VoteStatus voteState = row.getVoteState();
         MeetingStatus meetingStatus = mapMeetingStatus(voteState);
 
+        Long currentVoteId = row.getCurrentVoteId();
+
+        boolean hasVotedCurrent = (currentVoteId != null)
+                && voteSubmissionRepository.existsByVote_IdAndParticipant_Member_Id(currentVoteId, memberId);
+
         return new MeetingDetailResponse(
                 row.getMeetingId(),
                 row.getTitle(),
@@ -119,9 +126,28 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 participants,
                 row.getCurrentVoteId(),
                 voteState,
+                hasVotedCurrent,
                 row.isFinalSelected(),
                 meetingStatus
         );
     }
 
+
+    @Override
+    @Transactional(readOnly = true)
+    public InviteCodeResponse getInviteCode(Long memberId, Long meetingId) {
+
+        boolean isActive = meetingParticipantRepository.existsByMeetingIdAndMemberIdAndStatus(
+                meetingId, memberId, MeetingParticipant.Status.ACTIVE
+        );
+        if (!isActive) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_active_participant");
+        }
+
+        String inviteCode = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
+                .map(m -> m.getInviteCode())
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found"));
+
+        return new InviteCodeResponse(inviteCode);
+    }
 }

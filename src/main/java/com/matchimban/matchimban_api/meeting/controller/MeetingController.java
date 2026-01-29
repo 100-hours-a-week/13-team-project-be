@@ -79,4 +79,14 @@ public class MeetingController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(summary = "모임 초대코드 조회", description = "meetingId로 inviteCode 조회")
+    @ApiResponse(responseCode = "200", description = "ok")
+    @GetMapping("/{meetingId}/invite-code")
+    public ResponseEntity<InviteCodeResponse> getInviteCode(
+            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @PathVariable Long meetingId
+    ) {
+        return ResponseEntity.ok(meetingReadService.getInviteCode(memberId, meetingId));
+    }
+
 }

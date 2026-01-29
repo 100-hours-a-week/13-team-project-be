@@ -10,6 +10,7 @@ import lombok.Getter;
 public class VoteResultsResponse {
 
     private List<Item> items;
+    private Long hostMemberId;
 
     @Getter
     @AllArgsConstructor

@@ -28,9 +28,10 @@ public class Review {
     )
     private Long id;
 
-    @Column(nullable=false, precision=3, scale=1)
-    private BigDecimal rating;
+    @Column(nullable=false)
+    private int rating;
 
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @Column(name="is_deleted")

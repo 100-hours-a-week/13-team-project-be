@@ -19,10 +19,11 @@ public class VoteSubmission {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "vote_submissions_seq_gen")
-    @SequenceGenerator(name = "vote_submissions_seq_gen", sequenceName = "vote_submissions_seq", allocationSize = 50)
+    @SequenceGenerator(name = "vote_submissions_seq_gen", sequenceName = "vote_submissions_seq", allocationSize = 1)
     private Long id;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private VoteChoice choice;
 
     @ManyToOne(fetch = FetchType.LAZY)

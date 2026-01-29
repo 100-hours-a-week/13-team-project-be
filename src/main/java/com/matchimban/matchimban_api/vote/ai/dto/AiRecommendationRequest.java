@@ -6,7 +6,7 @@ import lombok.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class AiRecommendationRequest {
-    @JsonProperty("member_id")
+    @JsonProperty("user_id")
     private Long memberId;
 
     @JsonProperty("request_id")

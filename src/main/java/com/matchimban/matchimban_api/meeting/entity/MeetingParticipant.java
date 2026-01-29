@@ -34,15 +34,12 @@ public class MeetingParticipant {
     private Member member;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
+    @Column(length = 10, nullable = false)
     private Role role;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
     private Status status;
-
-    @Column(name = "last_read_at")
-    private LocalDateTime lastReadAt;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false)

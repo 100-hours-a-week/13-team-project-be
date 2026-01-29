@@ -68,9 +68,6 @@ public class Meeting {
     @Column(name = "invite_code", length = 8, nullable = false)
     private String inviteCode;
 
-    @Column(name = "last_chat_id")
-    private Long lastChatId;
-
     @Builder.Default
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;

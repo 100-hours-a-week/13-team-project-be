@@ -24,7 +24,7 @@ public class MeetingRestaurantCandidate {
     @SequenceGenerator(
             name = "meeting_restaurant_candidates_seq_gen",
             sequenceName = "meeting_restaurant_candidates_seq",
-            allocationSize = 50
+            allocationSize = 1
     )
     private Long id;
 
@@ -39,16 +39,17 @@ public class MeetingRestaurantCandidate {
     @Column(name = "distance_m")
     private Integer distanceM;
 
-    @Column(name = "base_rank")
-    private Integer baseRank;
+//    @Column(name = "base_rank")
+//    private Integer baseRank;
 
+    @Column(precision = 3, scale = 1)
     private BigDecimal rating;
 
     @Column(name = "ai_score", precision = 6, scale = 5)
     private BigDecimal aiScore;
 
-    @Column(name = "result_rank")
-    private Integer resultRank;
+    @Column(name = "final_rank")
+    private Integer finalRank;
 
     private Integer likeCount;
     private Integer dislikeCount;
@@ -67,8 +68,8 @@ public class MeetingRestaurantCandidate {
         this.dislikeCount = dislike;
         this.neutralCount = neutral;
     }
-    public void applyResultRank(int resultRank) {
-        this.resultRank = resultRank;
+    public void applyFinalRank(int finalRank) {
+        this.finalRank = finalRank;
     }
 
 }
