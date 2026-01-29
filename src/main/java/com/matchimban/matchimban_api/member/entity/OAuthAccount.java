@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -18,7 +19,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "oauth_accounts")
+@Table(
+	name = "oauth_accounts",
+	uniqueConstraints = {
+		@UniqueConstraint(name = "uk_oauth_accounts_provider_member", columnNames = { "provider", "provider_member_id" }),
+		@UniqueConstraint(name = "uk_oauth_accounts_provider_member_id", columnNames = { "provider", "member_id" })
+	}
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
