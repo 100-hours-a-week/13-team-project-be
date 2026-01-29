@@ -18,3 +18,7 @@ jwt:
   refresh-token-expire-days: 7
   cookie-secure: false
   cookie-same-site: "Lax"
+
+ai-recommendation:
+  base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000}
+  timeout-ms: 5000

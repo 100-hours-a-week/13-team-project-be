@@ -1,5 +1,7 @@
 package com.matchimban.matchimban_api.restaurant.entity;
 
+import com.matchimban.matchimban_api.member.entity.FoodCategory;
+import com.matchimban.matchimban_api.member.entity.Member;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -20,39 +22,25 @@ import java.time.LocalTime;
 public class Restaurant {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "restaurants_seq_gen")
-    @SequenceGenerator(name = "restaurants_seq_gen", sequenceName = "restaurants_seq", allocationSize = 50)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "category_id")
-    private Long categoryId;
 
     private String name;
 
-    private BigDecimal lat;
-    private BigDecimal lng;
+    @Column(name = "road_address")
+    private String roadAddress;
 
-    private String phone;
+    @Column(name = "jibun_address")
+    private String jibunAddress;
 
-    @Column(name = "address_road")
-    private String addressRoad;
+    @Column(name = "image_url1")
+    private String imageUrl1;
 
-    @Column(name = "category_original")
-    private String categoryOriginal;
+    @Column(name = "image_url2")
+    private String imageUrl2;
 
-    private String status;
-
-    private Integer reviewCountVisitor;
-    private Integer reviewCountBlog;
-
-    private LocalTime openTime;
-    private LocalTime closeTime;
-    private LocalTime breakStart;
-    private LocalTime breakEnd;
-    private LocalTime lastOrderTime;
-
-    @Column(name = "place_feature_hash")
-    private String placeFeatureHash;
+    @Column(name = "image_url3")
+    private String imageUrl3;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)
@@ -61,4 +49,8 @@ public class Restaurant {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
+    private FoodCategory foodCategory;
 }
