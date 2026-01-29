@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.meeting.controller;
 
+import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingRequest;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.service.MeetingParticipationService;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "MeetingParticipate", description = "모임 참여 API")
@@ -24,10 +26,10 @@ public class MeetingParticipantController {
     @CsrfRequired
     @PostMapping("/participate_meetings")
     public ResponseEntity<ParticipateMeetingResponse> participateMeeting(
-            @RequestParam Long memberId, //TODO: JWT 구현 시 수정
+            @AuthenticationPrincipal MemberPrincipal principal,
             @Valid @RequestBody ParticipateMeetingRequest request
     ) {
-        ParticipateMeetingResponse response = meetingParticipationService.participateMeeting(memberId, request);
+        ParticipateMeetingResponse response = meetingParticipationService.participateMeeting(principal.memberId(), request);
         return ResponseEntity.ok(response);
     }
 
@@ -36,10 +38,10 @@ public class MeetingParticipantController {
     @ApiResponse(responseCode = "204", description = "No Content")
     @DeleteMapping("meetings/{meetingId}/members/me")
     public ResponseEntity<Void> leaveMeeting(
-            @RequestParam Long memberId, // TODO: JWT로 구현 시 수정
+            @AuthenticationPrincipal MemberPrincipal principal,
             @PathVariable Long meetingId
     ) {
-        meetingParticipationService.leaveMeeting(memberId, meetingId);
+        meetingParticipationService.leaveMeeting(principal.memberId(), meetingId);
         return ResponseEntity.noContent().build();
     }
 
