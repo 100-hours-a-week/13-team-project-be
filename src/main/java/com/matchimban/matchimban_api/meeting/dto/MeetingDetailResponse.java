@@ -71,9 +71,13 @@ public class MeetingDetailResponse {
     @Schema(description = "현재(최신) 투표 상태")
     private VoteStatus voteStatus;
 
+    @Schema(description = "현재 투표에 로그인한 사용자가 투표 제출했는지 여부")
+    private boolean hasVotedCurrent;
+
     @Schema(description = "최종 선택 완료 여부")
     private boolean finalSelected;
 
     @Schema(description = "모임 진행 상태")
     private MeetingStatus meetingStatus;
+
 }

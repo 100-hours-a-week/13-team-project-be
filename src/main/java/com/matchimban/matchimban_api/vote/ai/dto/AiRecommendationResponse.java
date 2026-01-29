@@ -1,34 +1,44 @@
 package com.matchimban.matchimban_api.vote.ai.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.*;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@Builder
 public class AiRecommendationResponse {
+
     @JsonProperty("request_id")
     private String requestId;
 
-    @JsonProperty("member_id")
-    private Long memberId;
+    @JsonProperty("user_id")
+    private Long userId;
 
     @JsonProperty("top_n")
-    private int topN;
+    private Integer topN;
 
     private List<Restaurant> restaurants;
 
-    @JsonProperty("created_at")
-    private String createdAt;
-
-    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    @Getter @Setter
+    @NoArgsConstructor @AllArgsConstructor
+    @Builder
     public static class Restaurant {
-        private int rank;
-        @JsonProperty("store_id")
-        private Long storeId;
+        private Long id;
+        private String name;
+
+        @JsonProperty("category_mapped")
+        private String categoryMapped;
+
         @JsonProperty("distance_m")
-        private int distanceM;
+        private Integer distanceM;
+
         @JsonProperty("final_score")
         private BigDecimal finalScore;
+
+        // FastAPI가 rank를 보낼 수도 있으니 받아두고 싶으면:
+         private Integer rank;
     }
 }

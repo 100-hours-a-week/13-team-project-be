@@ -20,12 +20,13 @@ public class Vote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "votes_seq_gen")
-    @SequenceGenerator(name = "votes_seq_gen", sequenceName = "votes_seq", allocationSize = 50)
+    @SequenceGenerator(name = "votes_seq_gen", sequenceName = "votes_seq", allocationSize = 1)
     private Long id;
 
-    private short round;
+    private int round;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "state",length = 20)
     private VoteStatus status;
 
     private LocalDateTime generatedAt;
