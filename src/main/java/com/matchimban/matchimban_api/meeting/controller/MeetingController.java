@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.meeting.controller;
 
+import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.meeting.dto.*;
 import com.matchimban.matchimban_api.meeting.service.MeetingReadService;
 import com.matchimban.matchimban_api.meeting.service.MeetingService;
@@ -13,6 +14,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Meeting", description = "모임 API")
@@ -29,41 +31,41 @@ public class MeetingController {
     @CsrfRequired
     @PostMapping
     public ResponseEntity<CreateMeetingResponse> createMeeting(
-            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @AuthenticationPrincipal MemberPrincipal principal,
             @Valid @RequestBody CreateMeetingRequest request
     ) {
-        CreateMeetingResponse response = meetingService.createMeeting(memberId, request);
+        CreateMeetingResponse response = meetingService.createMeeting(principal.memberId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Operation(summary = "내 모임 목록 조회", description = "참여 중인 모임 목록 조회")
     @GetMapping
     public ResponseEntity<MyMeetingsResponse> getMyMeetings(
-            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @AuthenticationPrincipal MemberPrincipal principal,
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") @Min(1) @Max(50) int size
     ) {
-        return ResponseEntity.ok(meetingReadService.getMyMeetings(memberId, cursor, size));
+        return ResponseEntity.ok(meetingReadService.getMyMeetings(principal.memberId(), cursor, size));
     }
 
     @Operation(summary = "모임 상세 조회", description = "특정 모임의 상세 정보 조회")
     @GetMapping("/{meetingId}")
     public ResponseEntity<MeetingDetailResponse> getMeetingDetail(
-            @RequestParam Long memberId,
+            @AuthenticationPrincipal MemberPrincipal principal,
             @PathVariable Long meetingId
     ) {
-        return ResponseEntity.ok(meetingReadService.getMeetingDetail(memberId, meetingId));
+        return ResponseEntity.ok(meetingReadService.getMeetingDetail(principal.memberId(), meetingId));
     }
 
     @Operation(summary = "모임 수정", description = "모임 정보를 부분 수정(호스트만 가능)")
     @CsrfRequired
     @PatchMapping("/{meetingId}")
     public ResponseEntity<UpdateMeetingResponse> updateMeeting(
-            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @AuthenticationPrincipal MemberPrincipal principal,
             @PathVariable Long meetingId,
             @Valid @RequestBody UpdateMeetingRequest request
     ) {
-        return ResponseEntity.ok(meetingService.updateMeeting(memberId, meetingId, request));
+        return ResponseEntity.ok(meetingService.updateMeeting(principal.memberId(), meetingId, request));
     }
 
 
@@ -72,10 +74,10 @@ public class MeetingController {
     @CsrfRequired
     @DeleteMapping("/{meetingId}")
     public ResponseEntity<Void> deleteMeeting(
-            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @AuthenticationPrincipal MemberPrincipal principal,
             @PathVariable Long meetingId
     ) {
-        meetingService.deleteMeeting(memberId, meetingId);
+        meetingService.deleteMeeting(principal.memberId(), meetingId);
         return ResponseEntity.noContent().build();
     }
 
@@ -83,10 +85,10 @@ public class MeetingController {
     @ApiResponse(responseCode = "200", description = "ok")
     @GetMapping("/{meetingId}/invite-code")
     public ResponseEntity<InviteCodeResponse> getInviteCode(
-            @RequestParam Long memberId, // TODO: JWT 구현 시 수정
+            @AuthenticationPrincipal MemberPrincipal principal,
             @PathVariable Long meetingId
     ) {
-        return ResponseEntity.ok(meetingReadService.getInviteCode(memberId, meetingId));
+        return ResponseEntity.ok(meetingReadService.getInviteCode(principal.memberId(), meetingId));
     }
 
 }
