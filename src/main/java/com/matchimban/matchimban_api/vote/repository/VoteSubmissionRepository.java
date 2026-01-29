@@ -40,6 +40,6 @@ public interface VoteSubmissionRepository extends JpaRepository<VoteSubmission, 
     """)
     List<CandidateChoiceCountRow> countByCandidateAndChoice(@Param("voteId") Long voteId);
 
-    boolean existsByVote_IdAndParticipant_Member_Id(Long voteId, Long memberId);
+    boolean existsByVoteIdAndParticipant_MemberId(Long voteId, Long memberId);
 
 }
