@@ -17,6 +17,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.ForwardedHeaderFilter;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 public class SecurityConfig {
@@ -31,6 +32,9 @@ public class SecurityConfig {
 		csrfTokenRepository.setCookieName("csrf_token");
 		csrfTokenRepository.setHeaderName("X-CSRF-Token");
 		csrfTokenRepository.setCookiePath("/"); //사이트 전체 경로에서 쿠키가 유효.
+		if (csrfCookieDomain != null && !csrfCookieDomain.isBlank()) {
+			csrfTokenRepository.setCookieDomain(csrfCookieDomain);
+		}
 		CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
 
 		http
@@ -61,6 +65,9 @@ public class SecurityConfig {
 
 		return http.build();
 	}
+
+	@Value("${csrf.cookie-domain:}")
+	private String csrfCookieDomain;
 
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
