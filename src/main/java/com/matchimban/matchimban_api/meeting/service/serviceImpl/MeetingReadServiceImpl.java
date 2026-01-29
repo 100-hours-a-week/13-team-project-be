@@ -104,7 +104,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         Long currentVoteId = row.getCurrentVoteId();
 
         boolean hasVotedCurrent = (currentVoteId != null)
-                && voteSubmissionRepository.existsByVote_IdAndParticipant_Member_Id(currentVoteId, memberId);
+                && voteSubmissionRepository.existsByVoteIdAndParticipantMemberId(currentVoteId, memberId);
 
         return new MeetingDetailResponse(
                 row.getMeetingId(),
