@@ -132,8 +132,11 @@ public class OnboardingSeedData implements ApplicationRunner { //ApplicationRunn
 			new FoodCategorySeed(FoodCategoryType.CATEGORY, "CHINESE", "중식", null),
 			new FoodCategorySeed(FoodCategoryType.CATEGORY, "JAPANESE", "일식", null),
 			new FoodCategorySeed(FoodCategoryType.CATEGORY, "WESTERN", "양식", null),
+			new FoodCategorySeed(FoodCategoryType.CATEGORY, "ASIAN", "아시안", null),
+			new FoodCategorySeed(FoodCategoryType.CATEGORY, "BUNSIK", "분식", null),
 			new FoodCategorySeed(FoodCategoryType.CATEGORY, "SEAFOOD", "해산물", null),
-			new FoodCategorySeed(FoodCategoryType.CATEGORY, "MEAT", "고기", null)
+			new FoodCategorySeed(FoodCategoryType.CATEGORY, "MEAT", "고기", null),
+			new FoodCategorySeed(FoodCategoryType.CATEGORY, "ETC", "기타", null)
 		);
 
 		for (FoodCategorySeed seed : seeds) {
