@@ -54,7 +54,8 @@ public class SecurityConfig {
 					"/api/v1/auth/**",
 					"/api/csrf",
 					"/api/ping",
-					"/actuator/health"
+					"/actuator/health",
+					"/actuator/prometheus"
 				)
 				.permitAll()
 				.anyRequest()
