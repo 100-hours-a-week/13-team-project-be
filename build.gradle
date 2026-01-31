@@ -52,6 +52,8 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'  // Smoke Test용
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    
     testImplementation 'com.h2database:h2'    // CI 테스트용
 }
 
