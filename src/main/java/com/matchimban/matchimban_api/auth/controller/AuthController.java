@@ -2,7 +2,6 @@ package com.matchimban.matchimban_api.auth.controller;
 
 import com.matchimban.matchimban_api.auth.jwt.JwtProperties;
 import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
-import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
 import com.matchimban.matchimban_api.global.error.ApiException;
@@ -52,21 +51,20 @@ public class AuthController {
 	@ApiResponse(responseCode = "200", description = "token_refreshed")
 	@AuthRefreshErrorResponses
 	public ResponseEntity<ApiResult<?>> refresh(HttpServletRequest request) {
-		// refresh는 access(만료 허용) + refresh 쿠키가 둘 다 있어야 한다.
-		String accessToken = resolveCookie(request, jwtProperties.cookieName());
+		// refresh는 refresh 쿠키만 있으면 갱신할 수 있다.
 		String refreshToken = resolveCookie(request, jwtProperties.refreshCookieName());
-		if (accessToken == null || refreshToken == null) {
+		if (refreshToken == null) {
 			return unauthorizedWithClearCookies("invalid_refresh_token");
 		}
 
-		// 만료된 access라도 sid를 얻기 위해 파싱을 허용한다.
-		Optional<MemberPrincipal> principalOpt = jwtTokenProvider.parsePrincipalAllowExpired(accessToken);
-		if (principalOpt.isEmpty()) {
-			return unauthorizedWithClearCookies("invalid_access_token");
+		// refresh 토큰으로 세션(memberId/sid)을 역조회한다.
+		Optional<RefreshTokenService.RefreshSession> sessionOpt = refreshTokenService.resolveSession(refreshToken);
+		if (sessionOpt.isEmpty()) {
+			return unauthorizedWithClearCookies("invalid_refresh_token");
 		}
-		MemberPrincipal principal = principalOpt.get();
+		RefreshTokenService.RefreshSession session = sessionOpt.get();
 
-		Member member = memberRepository.findById(principal.memberId())
+		Member member = memberRepository.findById(session.memberId())
 			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
 		if (member.getStatus() == MemberStatus.DELETED) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -75,8 +73,8 @@ public class AuthController {
 
 		// Redis에서 refresh 해시 검증 → 성공 시 새 refresh 발급
 		Optional<String> rotated = refreshTokenService.rotate(
-			member.getId(),
-			principal.sid(),
+			session.memberId(),
+			session.sid(),
 			refreshToken,
 			request.getHeader("User-Agent")
 		);
@@ -85,7 +83,7 @@ public class AuthController {
 		}
 
 		// 같은 sid로 access/refresh를 교체해 세션을 유지한다.
-		String newAccessToken = jwtTokenProvider.createAccessToken(member, principal.sid());
+		String newAccessToken = jwtTokenProvider.createAccessToken(member, session.sid());
 		HttpHeaders headers = new HttpHeaders();
 		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(newAccessToken).toString());
 		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createRefreshTokenCookie(rotated.get()).toString());
@@ -100,11 +98,11 @@ public class AuthController {
 	@Operation(summary = "로그아웃", description = "현재 세션의 리프레시 토큰을 폐기하고 쿠키를 만료한다.")
 	@ApiResponse(responseCode = "200", description = "logout_success")
 	public ResponseEntity<ApiResult<?>> logout(HttpServletRequest request) {
-		String accessToken = resolveCookie(request, jwtProperties.cookieName());
-		if (accessToken != null) {
-			// 로그아웃은 sid 세션 단위로 refresh를 삭제한다.
-			jwtTokenProvider.parsePrincipalAllowExpired(accessToken)
-				.ifPresent(principal -> refreshTokenService.revoke(principal.memberId(), principal.sid()));
+		// access 없이도 refresh 기반으로 세션을 폐기한다.
+		String refreshToken = resolveCookie(request, jwtProperties.refreshCookieName());
+		if (refreshToken != null) {
+			refreshTokenService.resolveSession(refreshToken)
+				.ifPresent(session -> refreshTokenService.revoke(session.memberId(), session.sid()));
 		}
 
 		// 쿠키 만료 처리 (브라우저 세션 종료)
