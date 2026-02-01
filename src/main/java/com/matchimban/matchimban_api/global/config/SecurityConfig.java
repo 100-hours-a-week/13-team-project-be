@@ -43,6 +43,7 @@ public class SecurityConfig {
 			.csrf(csrf -> csrf
 				.csrfTokenRepository(csrfTokenRepository)
 				.csrfTokenRequestHandler(csrfRequestHandler)
+				.ignoringRequestMatchers("/api/dev/**")
 			)
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 			.addFilterAfter(memberStatusFilter, JwtAuthenticationFilter.class)
@@ -52,6 +53,7 @@ public class SecurityConfig {
 					"/v3/api-docs/**",
 					"/swagger-ui.html",
 					"/api/v1/auth/**",
+					"/api/dev/**",
 					"/api/csrf",
 					"/api/ping",
 					"/actuator/health",
