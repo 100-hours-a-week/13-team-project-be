@@ -26,7 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.context.annotation.Profile;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,9 +36,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Profile("dev")
 @RestController
 @RequestMapping("/api/dev/auth")
+@Tag(name = "Dev Auth", description = "개발용 인증 유틸리티")
 public class DevAuthController {
 	private static final String PROVIDER_KAKAO = "KAKAO";
 	private static final String DEV_PROVIDER_MEMBER_ID = "dev-kakao-0001";
@@ -76,6 +78,8 @@ public class DevAuthController {
 
 	@GetMapping("/access")
 	@Transactional
+	@Operation(summary = "개발용 액세스 토큰 발급", description = "dev 프로필에서 테스트 계정을 생성/조회하고 access 쿠키를 발급한다.")
+	@ApiResponse(responseCode = "200", description = "dev_access_issued")
 	public ResponseEntity<ApiResult<DevAccessData>> issueAccessToken() {
 		Member member = getOrCreateDevMember();
 		String sid = UUID.randomUUID().toString();
