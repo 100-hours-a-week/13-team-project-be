@@ -15,7 +15,7 @@ import java.lang.annotation.Target;
 @ApiResponses({
 	@ApiResponse(
 		responseCode = "401",
-		description = "invalid_refresh_token / invalid_access_token",
+		description = "invalid_refresh_token",
 		content = @Content(schema = @Schema(implementation = ErrorResponse.class))
 	),
 	@ApiResponse(

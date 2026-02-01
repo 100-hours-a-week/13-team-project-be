@@ -212,15 +212,53 @@ public class OnboardingServiceImpl implements OnboardingService {
 		Member member = memberRepository.findById(memberId)
 			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
 
-		// 기존 매핑을 전부 교체한다.
-		memberCategoryMappingRepository.deleteByMemberId(memberId);
-		List<MemberCategoryMapping> mappings = new ArrayList<>();
-		appendMappings(mappings, member, allergyValidation.categories(), MemberCategoryRelationType.ALLERGY);
-		appendMappings(mappings, member, preferredValidation.categories(), MemberCategoryRelationType.PREFERENCE);
-		appendMappings(mappings, member, dislikedValidation.categories(), MemberCategoryRelationType.DISLIKE);
+		// 기존 매핑을 조회해 변경분만 반영한다.
+		List<MemberCategoryMapping> existingMappings = memberCategoryMappingRepository
+			.findByMemberIdWithCategory(memberId); // 기존 매핑과 카테고리 정보를 함께 조회한다.
 
-		if (!mappings.isEmpty()) {
-			memberCategoryMappingRepository.saveAll(mappings);
+		Map<MappingKey, MemberCategoryMapping> existingByKey = new HashMap<>(); // 기존 매핑을 비교 키로 매핑한다.
+		for (MemberCategoryMapping mapping : existingMappings) { // 기존 매핑을 순회한다.
+			MappingKey key = new MappingKey(mapping.getCategory().getId(), mapping.getRelationType()); // 비교용 키를 만든다.
+			existingByKey.put(key, mapping); // 키로 기존 매핑을 저장한다.
+		}
+
+		Set<MappingKey> requestedKeys = new HashSet<>(); // 요청된 매핑 키 집합을 만든다.
+		Map<Long, FoodCategory> requestedCategoriesById = new HashMap<>(); // 요청된 카테고리 ID 기준 맵을 만든다.
+		addRequestedKeys(requestedKeys, requestedCategoriesById, allergyValidation.categories(),
+			MemberCategoryRelationType.ALLERGY); // 알레르기 매핑 키를 추가한다.
+		addRequestedKeys(requestedKeys, requestedCategoriesById, preferredValidation.categories(),
+			MemberCategoryRelationType.PREFERENCE); // 선호 매핑 키를 추가한다.
+		addRequestedKeys(requestedKeys, requestedCategoriesById, dislikedValidation.categories(),
+			MemberCategoryRelationType.DISLIKE); // 비선호 매핑 키를 추가한다.
+
+		Set<MappingKey> toDeleteKeys = new HashSet<>(existingByKey.keySet()); // 삭제 대상 계산을 위한 복사본을 만든다.
+		toDeleteKeys.removeAll(requestedKeys); // 기존 - 요청 = 삭제 대상이다.
+		Set<MappingKey> toInsertKeys = new HashSet<>(requestedKeys); // 삽입 대상 계산을 위한 복사본을 만든다.
+		toInsertKeys.removeAll(existingByKey.keySet()); // 요청 - 기존 = 삽입 대상이다.
+
+		if (!toDeleteKeys.isEmpty()) { // 삭제 대상이 있는지 확인한다.
+			List<Long> deleteIds = toDeleteKeys.stream() // 삭제할 ID 목록을 만든다.
+				.map(key -> existingByKey.get(key).getId()) // 키로 기존 매핑 ID를 찾는다.
+				.toList(); // ID 리스트로 수집한다.
+			memberCategoryMappingRepository.deleteAllByIdInBatch(deleteIds); // 삭제 SQL을 즉시 실행한다.
+			memberCategoryMappingRepository.flush(); // 삭제를 먼저 반영해 유니크 키 충돌을 방지한다.
+		}
+
+		List<MemberCategoryMapping> mappingsToInsert = new ArrayList<>(); // 삽입할 매핑 목록을 만든다.
+		for (MappingKey key : toInsertKeys) { // 삽입 대상 키를 순회한다.
+			FoodCategory category = requestedCategoriesById.get(key.categoryId()); // 카테고리 엔티티를 찾는다.
+			if (category == null) { // 카테고리가 누락된 경우를 방어한다.
+				continue; // 누락된 카테고리는 건너뛴다.
+			}
+			mappingsToInsert.add(MemberCategoryMapping.builder() // 새 매핑을 생성한다.
+				.member(member) // 멤버를 연결한다.
+				.category(category) // 카테고리를 연결한다.
+				.relationType(key.relationType()) // 관계 타입을 설정한다.
+				.build());
+		}
+
+		if (!mappingsToInsert.isEmpty()) { // 삽입 대상이 있는지 확인한다.
+			memberCategoryMappingRepository.saveAll(mappingsToInsert); // 신규 매핑을 저장한다.
 		}
 
 		if (member.getStatus() == MemberStatus.ONBOARDING) {
@@ -274,19 +312,21 @@ public class OnboardingServiceImpl implements OnboardingService {
 		return new ValidationResult(errors, categories);
 	}
 
-	private void appendMappings(
-		List<MemberCategoryMapping> mappings,
-		Member member,
+	// 요청 데이터로 비교 키 집합을 구성한다.
+	private void addRequestedKeys(
+		Set<MappingKey> requestedKeys,
+		Map<Long, FoodCategory> requestedCategoriesById,
 		List<FoodCategory> categories,
 		MemberCategoryRelationType relationType
 	) {
-		for (FoodCategory category : categories) {
-			mappings.add(MemberCategoryMapping.builder()
-				.member(member)
-				.category(category)
-				.relationType(relationType)
-				.build());
+		for (FoodCategory category : categories) { // 요청 카테고리를 순회한다.
+			MappingKey key = new MappingKey(category.getId(), relationType); // 카테고리+관계 타입 키를 만든다.
+			requestedKeys.add(key); // 요청 키 집합에 추가한다.
+			requestedCategoriesById.put(category.getId(), category); // 카테고리 ID로 엔티티를 저장한다.
 		}
+	}
+
+	private record MappingKey(Long categoryId, MemberCategoryRelationType relationType) { // 비교용 키 레코드를 정의한다.
 	}
 
 	private record ValidationResult(
