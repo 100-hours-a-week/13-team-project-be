@@ -55,7 +55,7 @@ public class OnboardingSeedData implements ApplicationRunner { //ApplicationRunn
 		7. 안전성 확보 조치
 		- 접근 통제, 암호화, 로그 관리 등 합리적 보호조치를 시행함.
 		8. 문의처
-		- 문의: support@matchimban.com
+		- 문의: support@moyeobab.com
 		""";
 
 	private final PolicyRepository policyRepository;
