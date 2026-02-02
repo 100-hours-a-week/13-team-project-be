@@ -36,6 +36,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
     private final VoteRepository voteRepository;
     private final VoteSubmissionRepository voteSubmissionRepository;
 
+    @Override
     public MyMeetingsResponse getMyMeetings(Long memberId, Long cursor, int size) {
 
         Pageable pageable = PageRequest.of(0, size + 1);
@@ -68,28 +69,28 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         Map<Long, List<Vote>> votesByMeetingId = votes.stream()
                 .collect(Collectors.groupingBy(v -> v.getMeeting().getId()));
 
-        Map<Long, VoteStatus> entryStatusByMeetingId = meetingIds.stream()
+        // ✅ FIX: Collectors.toMap의 value로 null이 들어가면 NPE가 나므로
+        // MeetingStatus를 바로 만들어서 절대 null이 되지 않게 한다.
+        Map<Long, MeetingStatus> meetingStatusByMeetingId = meetingIds.stream()
                 .collect(Collectors.toMap(
                         mid -> mid,
                         mid -> {
                             List<Vote> vs = votesByMeetingId.get(mid);
                             Vote entry = resolveEntryVote(vs);
-                            return (entry == null) ? null : entry.getStatus();
+                            VoteStatus status = (entry == null) ? null : entry.getStatus();
+                            return mapMeetingStatus(status); // null -> READY
                         }
                 ));
 
         List<MyMeetingSummary> items = pageRows.stream()
-                .map(r -> {
-                    VoteStatus entryStatus = entryStatusByMeetingId.get(r.getMeetingId());
-                    return new MyMeetingSummary(
-                            r.getMeetingId(),
-                            r.getTitle(),
-                            toKstLocalDateTime(r.getScheduledAt()),
-                            r.getParticipantCount(),
-                            r.getTargetHeadcount(),
-                            mapMeetingStatus(entryStatus)
-                    );
-                })
+                .map(r -> new MyMeetingSummary(
+                        r.getMeetingId(),
+                        r.getTitle(),
+                        toKstLocalDateTime(r.getScheduledAt()),
+                        r.getParticipantCount(),
+                        r.getTargetHeadcount(),
+                        meetingStatusByMeetingId.get(r.getMeetingId())
+                ))
                 .toList();
 
         return new MyMeetingsResponse(items, nextCursor, hasNext);
@@ -144,6 +145,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 .orElse(v1);
     }
 
+    @Override
     public MeetingDetailResponse getMeetingDetail(Long memberId, Long meetingId) {
 
         boolean isActiveParticipant = meetingParticipantRepository.existsByMeetingIdAndMemberIdAndStatus(
@@ -204,6 +206,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         );
     }
 
+    @Override
     @Transactional(readOnly = true)
     public MeetingDetailStateResponse getMeetingDetailState(Long memberId, Long meetingId) {
 
