@@ -2,6 +2,8 @@ package com.matchimban.matchimban_api.member.mapper;
 
 import com.matchimban.matchimban_api.member.dto.OAuthAccountCreateRequest;
 import com.matchimban.matchimban_api.member.entity.OAuthAccount;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +15,7 @@ public class OAuthAccountMapper {
 			.provider(request.provider())
 			.providerMemberId(request.providerMemberId())
 			.member(request.member())
-			.createdAt(LocalDateTime.now())
+			.createdAt(Instant.now())
 			.build();
 	}
 }

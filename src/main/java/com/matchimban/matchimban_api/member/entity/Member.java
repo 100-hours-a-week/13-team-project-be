@@ -10,6 +10,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -45,10 +47,10 @@ public class Member {
 	private MemberStatus status;
 
 	@Column(name = "created_at")
-	private LocalDateTime createdAt;
+	private Instant createdAt;
 
 	@Column(name = "updated_at")
-	private LocalDateTime updatedAt;
+	private Instant updatedAt;
 
 	@Column(name = "is_guest", nullable = false)
 	private boolean isGuest;
@@ -58,6 +60,6 @@ public class Member {
 
 	public void updateStatus(MemberStatus status) {
 		this.status = status;
-		this.updatedAt = LocalDateTime.now();
+		this.updatedAt = Instant.now();
 	}
 }

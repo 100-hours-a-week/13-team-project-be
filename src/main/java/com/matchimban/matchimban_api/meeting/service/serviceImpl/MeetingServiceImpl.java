@@ -22,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
+import java.time.Instant;
+
+import static com.matchimban.matchimban_api.global.time.TimeKst.toInstantFromKst;
 
 @Service
 @RequiredArgsConstructor
@@ -37,7 +39,11 @@ public class MeetingServiceImpl implements MeetingService {
 
     @Transactional
     public CreateMeetingResponse createMeeting(Long memberId, CreateMeetingRequest req) {
-        validateTimeRules(req.getScheduledAt(), req.getVoteDeadlineAt());
+
+        Instant scheduledAt = toInstantFromKst(req.getScheduledAt());
+        Instant voteDeadlineAt = toInstantFromKst(req.getVoteDeadlineAt());
+
+        validateTimeRules(scheduledAt, voteDeadlineAt);
 
         int inviteCodeRetry = 10;
         for (int attempt = 1; attempt <= inviteCodeRetry; attempt++) {
@@ -50,8 +56,8 @@ public class MeetingServiceImpl implements MeetingService {
             try {
                 Meeting meeting = Meeting.builder()
                         .title(req.getTitle())
-                        .scheduledAt(req.getScheduledAt())
-                        .voteDeadlineAt(req.getVoteDeadlineAt())
+                        .scheduledAt(scheduledAt)
+                        .voteDeadlineAt(voteDeadlineAt)
                         .locationAddress(req.getLocationAddress())
                         .locationLat(req.getLocationLat())
                         .locationLng(req.getLocationLng())
@@ -101,8 +107,14 @@ public class MeetingServiceImpl implements MeetingService {
         validateUpdateNotAllowedAfterVoteCreated(meetingId);
 
         String finalTitle = (req.getTitle() != null) ? req.getTitle() : meeting.getTitle();
-        LocalDateTime finalScheduledAt = (req.getScheduledAt() != null) ? req.getScheduledAt() : meeting.getScheduledAt();
-        LocalDateTime finalVoteDeadlineAt = (req.getVoteDeadlineAt() != null) ? req.getVoteDeadlineAt() : meeting.getVoteDeadlineAt();
+
+        Instant finalScheduledAt = (req.getScheduledAt() != null)
+                ? toInstantFromKst(req.getScheduledAt())
+                : meeting.getScheduledAt();
+
+        Instant finalVoteDeadlineAt = (req.getVoteDeadlineAt() != null)
+                ? toInstantFromKst(req.getVoteDeadlineAt())
+                : meeting.getVoteDeadlineAt();
 
         String finalLocationAddress = (req.getLocationAddress() != null) ? req.getLocationAddress() : meeting.getLocationAddress();
         BigDecimal finalLat = (req.getLocationLat() != null) ? req.getLocationLat() : meeting.getLocationLat();
@@ -160,12 +172,14 @@ public class MeetingServiceImpl implements MeetingService {
         return sb.toString();
     }
 
-    private void validateTimeRules(LocalDateTime scheduledAt, LocalDateTime voteDeadlineAt) {
-        LocalDateTime now = LocalDateTime.now();
+    private void validateTimeRules(Instant scheduledAt, Instant voteDeadlineAt) {
+        Instant now = Instant.now();
 
         if (scheduledAt.isBefore(now)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "scheduled_at must not be in the past");
+            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request",
+                    "scheduled_at must not be in the past");
         }
+
         if (voteDeadlineAt.isBefore(now) || voteDeadlineAt.isAfter(scheduledAt)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request",
                     "vote_deadline_at must be between now and scheduled_at");
@@ -184,6 +198,5 @@ public class MeetingServiceImpl implements MeetingService {
             );
         }
     }
-
 
 }

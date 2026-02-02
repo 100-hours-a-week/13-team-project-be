@@ -7,6 +7,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Table(name = "meetings")
@@ -31,7 +32,7 @@ public class Meeting {
     private String title;
 
     @Column(name = "scheduled_at", nullable = false)
-    private LocalDateTime scheduledAt;
+    private Instant scheduledAt;
 
     @Column(name = "location_address", length = 255, nullable = false)
     private String locationAddress;
@@ -50,7 +51,7 @@ public class Meeting {
     private int searchRadiusM;
 
     @Column(name = "vote_deadline_at", nullable = false)
-    private LocalDateTime voteDeadlineAt;
+    private Instant voteDeadlineAt;
 
     @Column(name = "is_except_meat", nullable = false)
     private boolean isExceptMeat;
@@ -74,11 +75,11 @@ public class Meeting {
 
     @CreatedDate
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @Column(name = "host_member_id", nullable = false)
     private Long hostMemberId;
@@ -89,8 +90,8 @@ public class Meeting {
 
     public void update(
             String title,
-            LocalDateTime scheduledAt,
-            LocalDateTime voteDeadlineAt,
+            Instant scheduledAt,
+            Instant voteDeadlineAt,
             String locationAddress,
             BigDecimal locationLat,
             BigDecimal locationLng,

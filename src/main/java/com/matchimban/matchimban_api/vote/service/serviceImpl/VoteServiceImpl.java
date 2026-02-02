@@ -26,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -238,7 +239,7 @@ public class VoteServiceImpl implements VoteService {
         if (submittedCount >= totalCount) {
             boolean started = voteCountService.tryStartCounting(voteId);
             if (started) {
-                voteCountService.countAsync(voteId);
+                voteCountService.countSync(voteId);
             }
         }
     }
@@ -328,11 +329,8 @@ public class VoteServiceImpl implements VoteService {
             throw new ApiException(HttpStatus.CONFLICT, "vote_not_counted_yet");
         }
 
-        LocalDateTime deadline = meeting.getVoteDeadlineAt();
-        if (deadline == null) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_deadline_missing");
-        }
-        LocalDateTime now = LocalDateTime.now();
+        Instant deadline = meeting.getVoteDeadlineAt();
+        Instant now = Instant.now();
         if (!now.isBefore(deadline)) {
             throw new ApiException(HttpStatus.CONFLICT, "vote_deadline_passed",
                     "now=" + now + ", deadline=" + deadline);

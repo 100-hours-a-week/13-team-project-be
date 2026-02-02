@@ -21,6 +21,8 @@ import com.matchimban.matchimban_api.member.repository.MemberRepository;
 import com.matchimban.matchimban_api.member.repository.OAuthAccountRepository;
 import com.matchimban.matchimban_api.member.repository.FoodCategoryRepository;
 import com.matchimban.matchimban_api.member.repository.PolicyRepository;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -130,7 +132,7 @@ public class DevAuthController {
 			return;
 		}
 
-		LocalDateTime now = LocalDateTime.now();
+		Instant now = Instant.now();
 		List<MemberAgreement> toSave = new ArrayList<>();
 		for (Policy policy : requiredPolicies) {
 			boolean exists = memberAgreementRepository.existsByMemberIdAndPolicyId(member.getId(), policy.getId());
