@@ -4,15 +4,15 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @AllArgsConstructor
 public class MeetingDetailRow {
     private Long meetingId;
     private String title;
-    private LocalDateTime scheduledAt;
-    private LocalDateTime voteDeadlineAt;
+    private Instant scheduledAt;
+    private Instant voteDeadlineAt;
 
     private String locationAddress;
     private BigDecimal locationLat;

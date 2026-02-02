@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -165,7 +166,7 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
                 );
             }
 
-            LocalDateTime now = LocalDateTime.now();
+            Instant now = Instant.now();
             v1.markOpen(now);
             v2.markReserved(now);
 

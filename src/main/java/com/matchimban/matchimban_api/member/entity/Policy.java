@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -54,7 +56,7 @@ public class Policy {
 	private String summary;
 
 	@Column(name = "created_at", nullable = false)
-	private LocalDateTime createdAt;
+	private Instant createdAt;
 
 	@Column(name = "is_required", nullable = false)
 	private boolean isRequired;

@@ -24,6 +24,8 @@ import com.matchimban.matchimban_api.member.repository.MemberAgreementRepository
 import com.matchimban.matchimban_api.member.repository.MemberCategoryMappingRepository;
 import com.matchimban.matchimban_api.member.repository.MemberRepository;
 import com.matchimban.matchimban_api.member.repository.PolicyRepository;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -118,7 +120,7 @@ public class OnboardingServiceImpl implements OnboardingService {
 			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
 
 		// 동의 내역 저장
-		LocalDateTime now = LocalDateTime.now();
+		Instant now = Instant.now();
 		List<MemberAgreement> toSave = new ArrayList<>();
 		for (Policy policy : policies) {
 			if (!Boolean.TRUE.equals(consentMap.get(policy.getId()))) {

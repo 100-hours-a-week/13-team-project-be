@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -49,8 +50,17 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
         where v.status = com.matchimban.matchimban_api.vote.entity.VoteStatus.OPEN
           and m.voteDeadlineAt <= :now
     """)
-    List<Long> findOpenVoteIdsPastDeadline(@Param("now") LocalDateTime now);
+    List<Long> findOpenVoteIdsPastDeadline(@Param("now") Instant now);
 
     boolean existsByMeetingIdAndStatusNot(Long meetingId, VoteStatus status);
+
+    @Query("""
+        select v
+        from Vote v
+        join fetch v.meeting m
+        where m.id in :meetingIds
+        order by m.id asc, v.round asc
+    """)
+    List<Vote> findByMeetingIdInOrderByMeetingIdAscRoundAsc(@Param("meetingIds") List<Long> meetingIds);
 
 }

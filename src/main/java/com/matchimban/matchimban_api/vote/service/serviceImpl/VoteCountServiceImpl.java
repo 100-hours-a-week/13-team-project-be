@@ -16,6 +16,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -42,9 +43,8 @@ public class VoteCountServiceImpl implements VoteCountService {
     }
 
     @Override
-    @Async
     @Transactional
-    public void countAsync(Long voteId) {
+    public void countSync(Long voteId) {
         try {
             Vote vote = voteRepository.findById(voteId).orElseThrow();
 
@@ -108,7 +108,7 @@ public class VoteCountServiceImpl implements VoteCountService {
                 c.applyFinalRank(rank++);
             }
 
-            vote.markCounted(LocalDateTime.now());
+            vote.markCounted(Instant.now());
 
             LOG.info("Vote counted. voteId={}, candidates={}", voteId, candidates.size());
 

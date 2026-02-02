@@ -11,6 +11,8 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -38,7 +40,7 @@ public class OAuthAccount {
 	private Long id;
 
 	@Column(name = "created_at")
-	private LocalDateTime createdAt;
+	private Instant createdAt;
 
 	@Column(name = "provider_member_id", length = 32, nullable = false)
 	private String providerMemberId;
