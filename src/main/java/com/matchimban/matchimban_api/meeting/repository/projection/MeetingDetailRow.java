@@ -1,6 +1,5 @@
 package com.matchimban.matchimban_api.meeting.repository.projection;
 
-import com.matchimban.matchimban_api.vote.entity.VoteStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -30,8 +29,6 @@ public class MeetingDetailRow {
     private Long hostMemberId;
 
     private long participantCount;
-    private Long currentVoteId;
-    private VoteStatus voteState;
 
     private boolean finalSelected;
 }

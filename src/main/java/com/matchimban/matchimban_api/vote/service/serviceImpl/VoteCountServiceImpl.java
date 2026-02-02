@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.vote.service;
+package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
 import com.matchimban.matchimban_api.vote.entity.MeetingRestaurantCandidate;
 import com.matchimban.matchimban_api.vote.entity.Vote;
@@ -7,17 +7,20 @@ import com.matchimban.matchimban_api.vote.entity.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.MeetingRestaurantCandidateRepository;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import com.matchimban.matchimban_api.vote.repository.VoteSubmissionRepository;
-import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.matchimban.matchimban_api.vote.service.VoteCountService;
+import com.matchimban.matchimban_api.vote.service.VoteFailureService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +32,16 @@ public class VoteCountServiceImpl implements VoteCountService {
     private final VoteSubmissionRepository voteSubmissionRepository;
     private final MeetingRestaurantCandidateRepository candidateRepository;
 
+    private final VoteFailureService voteFailureService;
+
+    @Override
     @Transactional
     public boolean tryStartCounting(Long voteId) {
         int updated = voteRepository.updateStatusIfMatch(voteId, VoteStatus.OPEN, VoteStatus.COUNTING);
         return updated == 1;
     }
 
+    @Override
     @Async
     @Transactional
     public void countAsync(Long voteId) {
@@ -47,7 +54,7 @@ public class VoteCountServiceImpl implements VoteCountService {
 
             List<Long> candidateIds = candidateRepository.findCandidateIdsByVoteId(voteId);
             if (candidateIds.isEmpty()) {
-                vote.markFailed();
+                voteFailureService.markVoteFailed(voteId);
                 return;
             }
 
@@ -93,7 +100,6 @@ public class VoteCountServiceImpl implements VoteCountService {
                                             c.getAiScore() == null ? java.math.BigDecimal.ZERO : c.getAiScore(),
                                     Comparator.reverseOrder()
                             )
-//                            .thenComparingInt(c -> c.getBaseRank() == null ? Integer.MAX_VALUE : c.getBaseRank())
                             .thenComparingLong(c -> c.getId() == null ? Long.MAX_VALUE : c.getId())
             );
 
@@ -108,7 +114,8 @@ public class VoteCountServiceImpl implements VoteCountService {
 
         } catch (Exception e) {
             LOG.error("Vote count failed. voteId={}", voteId, e);
-            voteRepository.findById(voteId).ifPresent(Vote::markFailed);
+
+            voteFailureService.markVoteFailed(voteId);
         }
     }
 }

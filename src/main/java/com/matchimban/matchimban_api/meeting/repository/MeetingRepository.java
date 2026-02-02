@@ -11,6 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface MeetingRepository extends JpaRepository<Meeting, Long> {
+
     boolean existsByInviteCode(String inviteCode);
 
     Optional<Meeting> findByInviteCodeAndIsDeletedFalse(String inviteCode);
@@ -44,29 +45,6 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
                 and mp.status = com.matchimban.matchimban_api.meeting.entity.MeetingParticipant.Status.ACTIVE
             ),
 
-            (select v.id
-               from Vote v
-              where v.meeting = m
-                and v.round = (
-                    select max(v2.round)
-                      from Vote v2
-                     where v2.meeting = m
-                       and v2.status != com.matchimban.matchimban_api.vote.entity.VoteStatus.RESERVED
-                )
-            ),
-
-            (select v.status
-               from Vote v
-              where v.meeting = m
-                and v.round = (
-                    select max(v2.round)
-                      from Vote v2
-                     where v2.meeting = m
-                       and v2.status != com.matchimban.matchimban_api.vote.entity.VoteStatus.RESERVED
-                )
-            ),
-
-
             (select (count(fs) > 0)
                from MeetingFinalSelection fs
               where fs.meeting.id = m.id
@@ -77,5 +55,4 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
           and m.isDeleted = false
     """)
     Optional<MeetingDetailRow> findMeetingDetailRow(@Param("meetingId") Long meetingId);
-
 }

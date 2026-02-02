@@ -16,6 +16,8 @@ public interface VoteService {
 
     VoteResultsResponse getResults(Long meetingId, Long voteId, Long memberId);
 
+    void startRevote(Long meetingId, Long voteId, Long memberId);
+
     void finalizeSelection(Long meetingId, Long voteId, Long memberId, FinalSelectionRequest request);
 
     FinalSelectionResponse getFinalSelection(Long meetingId, Long memberId);
