@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.vote.service;
+package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.ApiException;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
@@ -18,19 +18,23 @@ import com.matchimban.matchimban_api.vote.entity.MeetingRestaurantCandidate;
 import com.matchimban.matchimban_api.vote.entity.Vote;
 import com.matchimban.matchimban_api.vote.repository.MeetingRestaurantCandidateRepository;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.*;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import com.matchimban.matchimban_api.vote.service.VoteCandidateAsyncService;
+import com.matchimban.matchimban_api.vote.service.VoteFailureService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.matchimban.matchimban_api.member.entity.enums.FoodCategoryType.CATEGORY;
 
@@ -51,6 +55,9 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
     private final ReviewRepository reviewRepository;
     private final MeetingRestaurantCandidateRepository candidateRepository;
 
+    private final VoteFailureService voteFailureService;
+
+    @Override
     @Transactional
     public void generateCandidates(Long meetingId, Long round1VoteId, Long round2VoteId) {
         try {
@@ -169,14 +176,16 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
                     meetingId, round1VoteId, round2VoteId,
                     e.getStatus(), e.getMessage(), e.getDetail(), e);
 
-            markVotesFailedInNewTx(round1VoteId, round2VoteId);
+            voteFailureService.markVotesFailed(round1VoteId, round2VoteId);
+
+            throw e;
 
         } catch (Exception e) {
             LOG.error("Vote candidate generation failed(Exception). meetingId={}, vote1={}, vote2={}",
                     meetingId, round1VoteId, round2VoteId, e);
 
-            markVotesFailedInNewTx(round1VoteId, round2VoteId);
-
+            voteFailureService.markVotesFailed(round1VoteId, round2VoteId);
+            throw e;
         }
     }
 
@@ -233,11 +242,5 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
 
         candidateRepository.saveAll(candidates);
         return candidates.size();
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markVotesFailedInNewTx(Long round1VoteId, Long round2VoteId) {
-        voteRepository.findById(round1VoteId).ifPresent(Vote::markFailed);
-        voteRepository.findById(round2VoteId).ifPresent(Vote::markFailed);
     }
 }

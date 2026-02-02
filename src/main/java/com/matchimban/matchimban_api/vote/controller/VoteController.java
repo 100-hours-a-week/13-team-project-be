@@ -74,6 +74,18 @@ public class VoteController {
         return ResponseEntity.ok(voteService.getResults(meetingId, voteId, principal.memberId()));
     }
 
+    @Operation(summary = "재투표 시작(2차 OPEN)")
+    @CsrfRequired
+    @PostMapping("/{meetingId}/votes/{voteId}/start-revote")
+    public ResponseEntity<Void> startRevote(
+            @PathVariable Long meetingId,
+            @PathVariable Long voteId,
+            @AuthenticationPrincipal MemberPrincipal principal
+    ) {
+        voteService.startRevote(meetingId, voteId, principal.memberId());
+        return ResponseEntity.ok().build();
+    }
+
     @Operation(summary = "최종 선택")
     @CsrfRequired
     @PostMapping("/{meetingId}/votes/{voteId}/final-selection")

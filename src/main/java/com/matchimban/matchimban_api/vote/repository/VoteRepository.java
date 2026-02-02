@@ -21,6 +21,14 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
 
     boolean existsByMeetingIdAndRound(Long meetingId, short round);
 
+    @Query("""
+        select v
+        from Vote v
+        where v.meeting.id = :meetingId
+        order by v.round asc
+    """)
+    List<Vote> findByMeetingIdOrderByRoundAsc(@Param("meetingId") Long meetingId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         update Vote v
@@ -42,5 +50,7 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
           and m.voteDeadlineAt <= :now
     """)
     List<Long> findOpenVoteIdsPastDeadline(@Param("now") LocalDateTime now);
+
+    boolean existsByMeetingIdAndStatusNot(Long meetingId, VoteStatus status);
 
 }
