@@ -78,6 +78,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
 			"https://moyeobab.com",
 			"https://www.moyeobab.com",
+			"https://dev.moyeobab.com",
 			"http://localhost:3000",
 			"http://localhost:5173"
 		));
