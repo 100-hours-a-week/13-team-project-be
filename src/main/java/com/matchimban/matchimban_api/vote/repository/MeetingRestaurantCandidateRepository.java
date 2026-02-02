@@ -33,7 +33,7 @@ public interface MeetingRestaurantCandidateRepository extends JpaRepository<Meet
         join c.restaurant r
         join r.foodCategory fc
         where c.vote.id = :voteId
-        order by c.aiScore asc, c.id asc
+        order by c.aiScore desc, c.id asc
     """)
     List<VoteCandidatesResponse.Candidate> findCandidateDtosByVoteId(@Param("voteId") Long voteId);
 

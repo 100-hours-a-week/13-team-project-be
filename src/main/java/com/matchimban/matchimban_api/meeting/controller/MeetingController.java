@@ -57,6 +57,15 @@ public class MeetingController {
         return ResponseEntity.ok(meetingReadService.getMeetingDetail(principal.memberId(), meetingId));
     }
 
+    @Operation(summary = "모임 상세 상태 조회(폴링용)")
+    @GetMapping("/{meetingId}/state")
+    public ResponseEntity<MeetingDetailStateResponse> getMeetingDetailState(
+            @PathVariable Long meetingId,
+            @AuthenticationPrincipal MemberPrincipal principal
+    ) {
+        return ResponseEntity.ok(meetingReadService.getMeetingDetailState(principal.memberId(), meetingId));
+    }
+
     @Operation(summary = "모임 수정", description = "모임 정보를 부분 수정(호스트만 가능)")
     @CsrfRequired
     @PatchMapping("/{meetingId}")

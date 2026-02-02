@@ -2,12 +2,15 @@ package com.matchimban.matchimban_api.meeting.service;
 
 import com.matchimban.matchimban_api.meeting.dto.InviteCodeResponse;
 import com.matchimban.matchimban_api.meeting.dto.MeetingDetailResponse;
+import com.matchimban.matchimban_api.meeting.dto.MeetingDetailStateResponse;
 import com.matchimban.matchimban_api.meeting.dto.MyMeetingsResponse;
 
 public interface MeetingReadService {
     MyMeetingsResponse getMyMeetings(Long memberId, Long cursor, int size);
 
     MeetingDetailResponse getMeetingDetail(Long memberId, Long meetingId);
+
+    MeetingDetailStateResponse getMeetingDetailState(Long memberId, Long meetingId);
 
     InviteCodeResponse getInviteCode(Long memberId, Long meetingId);
 }

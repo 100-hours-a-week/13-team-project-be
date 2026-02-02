@@ -11,6 +11,7 @@ import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantReposi
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.meeting.service.MeetingService;
 import com.matchimban.matchimban_api.member.entity.Member;
+import com.matchimban.matchimban_api.vote.entity.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -172,7 +173,10 @@ public class MeetingServiceImpl implements MeetingService {
     }
 
     private void validateUpdateNotAllowedAfterVoteCreated(Long meetingId) {
-        if (voteRepository.existsByMeetingId(meetingId)) {
+        boolean hasNonFailedVote =
+                voteRepository.existsByMeetingIdAndStatusNot(meetingId, VoteStatus.FAILED);
+
+        if (hasNonFailedVote) {
             throw new ApiException(
                     HttpStatus.CONFLICT,
                     "meeting_update_not_allowed",
@@ -180,5 +184,6 @@ public class MeetingServiceImpl implements MeetingService {
             );
         }
     }
+
 
 }

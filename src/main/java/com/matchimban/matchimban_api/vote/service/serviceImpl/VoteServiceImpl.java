@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.vote.service;
+package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.ApiException;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
@@ -18,12 +18,15 @@ import com.matchimban.matchimban_api.vote.repository.MeetingFinalSelectionReposi
 import com.matchimban.matchimban_api.vote.repository.MeetingRestaurantCandidateRepository;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import com.matchimban.matchimban_api.vote.repository.VoteSubmissionRepository;
+import com.matchimban.matchimban_api.vote.service.VoteCountService;
+import com.matchimban.matchimban_api.vote.service.VoteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -66,10 +69,45 @@ public class VoteServiceImpl implements VoteService {
             throw new ApiException(HttpStatus.CONFLICT, "vote_create_not_ready_headcount",
                     "activeCount=" + activeCount + ", target=" + meeting.getTargetHeadcount());
         }
-        return voteRepository.findByMeetingIdAndRound(meetingId, (short) 1)
-                .filter(v -> v.getStatus() != VoteStatus.FAILED)
-                .map(v -> new CreateVoteResponse(v.getId()))
-                .orElseGet(() -> createNewVotesAndPublishEvent(meeting));
+
+        Vote v1 = voteRepository.findByMeetingIdAndRound(meetingId, (short) 1)
+                .orElse(null);
+
+        if (v1 == null) {
+            return createNewVotesAndPublishEvent(meeting);
+        }
+
+        Vote v2 = voteRepository.findByMeetingIdAndRound(meetingId, (short) 2)
+                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", "round2_missing"));
+
+        VoteStatus s1 = v1.getStatus();
+
+        if (s1 == VoteStatus.OPEN || s1 == VoteStatus.COUNTING || s1 == VoteStatus.COUNTED) {
+            return new CreateVoteResponse(v1.getId());
+        }
+
+        if (s1 == VoteStatus.GENERATING) {
+            return new CreateVoteResponse(v1.getId());
+        }
+
+        if (s1 == VoteStatus.FAILED) {
+            boolean acquired = voteRepository.updateStatusIfMatch(v1.getId(), VoteStatus.FAILED, VoteStatus.GENERATING) == 1;
+            voteRepository.updateStatusIfMatch(v2.getId(), VoteStatus.FAILED, VoteStatus.GENERATING);
+            voteRepository.updateStatusIfMatch(v2.getId(), VoteStatus.RESERVED, VoteStatus.GENERATING);
+
+            if (acquired) {
+                meetingRestaurantCandidateRepository.deleteByVoteId(v1.getId());
+                meetingRestaurantCandidateRepository.deleteByVoteId(v2.getId());
+
+                eventPublisher.publishEvent(new VoteCandidateGenerationRequestedEvent(
+                        meeting.getId(), v1.getId(), v2.getId()
+                ));
+            }
+
+            return new CreateVoteResponse(v1.getId());
+        }
+
+        return new CreateVoteResponse(v1.getId());
     }
 
     private CreateVoteResponse createNewVotesAndPublishEvent(Meeting meeting) {
@@ -261,6 +299,62 @@ public class VoteServiceImpl implements VoteService {
 
         Long hostMemberId = vote.getMeeting().getHostMemberId();
         return new VoteResultsResponse(items, hostMemberId);
+    }
+
+    @Transactional
+    public void startRevote(Long meetingId, Long voteId, Long memberId) {
+
+        Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found"));
+
+        if (!Objects.equals(meeting.getHostMemberId(), memberId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_host");
+        }
+
+        if (meetingFinalSelectionRepository.existsByMeetingId(meetingId)) {
+            throw new ApiException(HttpStatus.CONFLICT, "final_already_selected");
+        }
+
+        Vote v1 = voteRepository.findById(voteId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "vote_not_found"));
+
+        if (v1.getMeeting() == null || !Objects.equals(v1.getMeeting().getId(), meetingId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "vote_not_found");
+        }
+        if (v1.getRound() != 1) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "not_round1_vote");
+        }
+        if (v1.getStatus() != VoteStatus.COUNTED) {
+            throw new ApiException(HttpStatus.CONFLICT, "vote_not_counted_yet");
+        }
+
+        LocalDateTime deadline = meeting.getVoteDeadlineAt();
+        if (deadline == null) {
+            throw new ApiException(HttpStatus.CONFLICT, "vote_deadline_missing");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (!now.isBefore(deadline)) {
+            throw new ApiException(HttpStatus.CONFLICT, "vote_deadline_passed",
+                    "now=" + now + ", deadline=" + deadline);
+        }
+
+        Vote v2 = voteRepository.findByMeetingIdAndRound(meetingId, (short) 2)
+                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", "round2_missing"));
+
+        if (!meetingRestaurantCandidateRepository.existsByVoteId(v2.getId())) {
+            throw new ApiException(HttpStatus.CONFLICT, "vote_candidates_not_ready");
+        }
+
+        if (v2.getStatus() == VoteStatus.OPEN) {
+            return;
+        }
+
+        if (v2.getStatus() == VoteStatus.RESERVED) {
+            v2.markOpen(now);
+            return;
+        }
+
+        throw new ApiException(HttpStatus.CONFLICT, "revote_not_available", "status=" + v2.getStatus());
     }
 
     @Transactional
