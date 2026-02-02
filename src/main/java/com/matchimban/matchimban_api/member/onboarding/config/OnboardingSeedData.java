@@ -6,6 +6,8 @@ import com.matchimban.matchimban_api.member.entity.enums.FoodCategoryType;
 import com.matchimban.matchimban_api.member.entity.enums.PolicyType;
 import com.matchimban.matchimban_api.member.repository.FoodCategoryRepository;
 import com.matchimban.matchimban_api.member.repository.PolicyRepository;
+
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.boot.ApplicationArguments;
@@ -110,7 +112,7 @@ public class OnboardingSeedData implements ApplicationRunner { //ApplicationRunn
 				.isRequired(seed.required())
 				.summary(seed.summary())
 				.termsContent(seed.content())
-				.createdAt(LocalDateTime.now())
+				.createdAt(Instant.now())
 				.build();
 			try {
 				policyRepository.save(policy);

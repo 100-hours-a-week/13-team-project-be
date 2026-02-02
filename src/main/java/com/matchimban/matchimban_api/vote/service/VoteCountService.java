@@ -4,5 +4,5 @@ public interface VoteCountService {
 
     boolean tryStartCounting(Long voteId);
 
-    void countAsync(Long voteId);
+    void countSync(Long voteId);
 }

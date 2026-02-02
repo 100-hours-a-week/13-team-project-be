@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.member.dto.response;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record MemberMeResponse(
 	Long memberId,
@@ -8,8 +8,8 @@ public record MemberMeResponse(
 	String profileImageUrl,
 	String thumbnailImageUrl,
 	String status,
-	LocalDateTime createdAt,
-	LocalDateTime updatedAt,
+	Instant createdAt,
+	Instant updatedAt,
 	MemberPreferencesResponse preferences
 ) {
 }

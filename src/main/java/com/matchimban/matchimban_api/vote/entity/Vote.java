@@ -7,6 +7,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 @Entity
@@ -29,16 +30,16 @@ public class Vote {
     @Column(name = "state",length = 20)
     private VoteStatus status;
 
-    private LocalDateTime generatedAt;
-    private LocalDateTime countedAt;
+    private Instant generatedAt;
+    private Instant countedAt;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @LastModifiedDate
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "meeting_id")
@@ -50,12 +51,12 @@ public class Vote {
         this.countedAt = null;
     }
 
-    public void markOpen(LocalDateTime generatedAt) {
+    public void markOpen(Instant generatedAt) {
         this.status = VoteStatus.OPEN;
         this.generatedAt = generatedAt;
     }
 
-    public void markReserved(LocalDateTime generatedAt) {
+    public void markReserved(Instant generatedAt) {
         this.status = VoteStatus.RESERVED;
         this.generatedAt = generatedAt;
     }
@@ -64,7 +65,7 @@ public class Vote {
         this.status = VoteStatus.COUNTING;
     }
 
-    public void markCounted(LocalDateTime countedAt) {
+    public void markCounted(Instant countedAt) {
         this.status = VoteStatus.COUNTED;
         this.countedAt = countedAt;
     }

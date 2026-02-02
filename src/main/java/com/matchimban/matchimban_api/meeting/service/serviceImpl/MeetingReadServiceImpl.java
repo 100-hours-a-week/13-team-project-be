@@ -21,6 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static com.matchimban.matchimban_api.global.time.TimeKst.toKstLocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -54,15 +58,38 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 ? pageRows.get(pageRows.size() - 1).getMeetingParticipantId()
                 : null;
 
+        List<Long> meetingIds = pageRows.stream()
+                .map(MyMeetingRow::getMeetingId)
+                .distinct()
+                .toList();
+
+        List<Vote> votes = voteRepository.findByMeetingIdInOrderByMeetingIdAscRoundAsc(meetingIds);
+
+        Map<Long, List<Vote>> votesByMeetingId = votes.stream()
+                .collect(Collectors.groupingBy(v -> v.getMeeting().getId()));
+
+        Map<Long, VoteStatus> entryStatusByMeetingId = meetingIds.stream()
+                .collect(Collectors.toMap(
+                        mid -> mid,
+                        mid -> {
+                            List<Vote> vs = votesByMeetingId.get(mid);
+                            Vote entry = resolveEntryVote(vs);
+                            return (entry == null) ? null : entry.getStatus();
+                        }
+                ));
+
         List<MyMeetingSummary> items = pageRows.stream()
-                .map(r -> new MyMeetingSummary(
-                        r.getMeetingId(),
-                        r.getTitle(),
-                        r.getScheduledAt(),
-                        r.getParticipantCount(),
-                        r.getTargetHeadcount(),
-                        mapMeetingStatus(r.getVoteStatus())
-                ))
+                .map(r -> {
+                    VoteStatus entryStatus = entryStatusByMeetingId.get(r.getMeetingId());
+                    return new MyMeetingSummary(
+                            r.getMeetingId(),
+                            r.getTitle(),
+                            toKstLocalDateTime(r.getScheduledAt()),
+                            r.getParticipantCount(),
+                            r.getTargetHeadcount(),
+                            mapMeetingStatus(entryStatus)
+                    );
+                })
                 .toList();
 
         return new MyMeetingsResponse(items, nextCursor, hasNext);
@@ -154,8 +181,8 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         return new MeetingDetailResponse(
                 row.getMeetingId(),
                 row.getTitle(),
-                row.getScheduledAt(),
-                row.getVoteDeadlineAt(),
+                toKstLocalDateTime(row.getScheduledAt()),
+                toKstLocalDateTime(row.getVoteDeadlineAt()),
                 row.getLocationAddress(),
                 row.getLocationLat(),
                 row.getLocationLng(),
