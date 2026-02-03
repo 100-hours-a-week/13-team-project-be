@@ -69,8 +69,6 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         Map<Long, List<Vote>> votesByMeetingId = votes.stream()
                 .collect(Collectors.groupingBy(v -> v.getMeeting().getId()));
 
-        // ✅ FIX: Collectors.toMap의 value로 null이 들어가면 NPE가 나므로
-        // MeetingStatus를 바로 만들어서 절대 null이 되지 않게 한다.
         Map<Long, MeetingStatus> meetingStatusByMeetingId = meetingIds.stream()
                 .collect(Collectors.toMap(
                         mid -> mid,
