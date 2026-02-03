@@ -1,25 +1,26 @@
 # =============================================================================
 # Spring Boot Backend CD Pipeline
 # =============================================================================
-# 트리거: CI 완료 후 (main 브랜치만)
-# 순서: 아티팩트 다운로드 → 백업 → 배포 → Smoke Test → 알림
+# 트리거: CI 완료 후 (main, develop 브랜치)
+# 환경: main → production, develop → develop
+# 순서: 아티팩트 다운로드 → 백업 → 배포 → Health Check → 알림
 # =============================================================================
 
 name: Backend CD PIPELINE
-run-name: BE CD • ${{ github.event.workflow_run.head_sha }}
+run-name: BE CD • ${{ github.event.workflow_run.head_branch }} • ${{ github.event.workflow_run.head_sha }}
 
 on:
   workflow_run:
     workflows: ["Backend CI PIPELINE"]
     types: [completed]
-    branches: [main]
+    branches: [main, develop]
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: be-cd-${{ github.workflow }}-${{ github.event.workflow_run.head_sha }}
+  group: be-cd-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 env:
@@ -29,9 +30,11 @@ env:
 
 jobs:
   deploy:
-    name: Deploy to EC2
+    name: Deploy to EC2 (${{ github.event.workflow_run.head_branch == 'main' && 'production' || 'develop' }})
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: ${{ github.event.workflow_run.head_branch == 'main' && 'production' || 'develop' }}
 
     steps:
       - name: Download JAR Artifact
@@ -48,10 +51,10 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s' "${{ secrets.EC2_KEY_PAIR }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-          echo "SSH_CMD=ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" >> "$GITHUB_ENV"
+          ssh-keyscan -H ${{ secrets.EC2_ELASTIC_IP }} >> ~/.ssh/known_hosts
+          echo "SSH_CMD=ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_ELASTIC_IP }}" >> "$GITHUB_ENV"
 
       - name: Backup current JAR
         run: |
@@ -65,14 +68,14 @@ jobs:
         run: |
           $SSH_CMD "mkdir -p ${{ env.DEPLOY_PATH }}"
           scp -i ~/.ssh/deploy_key ./artifact/*.jar \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ env.DEPLOY_PATH }}/${{ env.JAR_NAME }}
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_ELASTIC_IP }}:${{ env.DEPLOY_PATH }}/${{ env.JAR_NAME }}
           $SSH_CMD "sudo systemctl restart moyeobab-api"
 
       - name: Health check
         id: health_check
         run: |
           curl -sf --retry 10 --retry-delay 5 --max-time 10 \
-            https://api.moyeobab.com/api/ping
+            https://${{ secrets.HEALTH_CHECK_URL }}/api/ping
 
       - name: Rollback on failure
         id: rollback
@@ -84,10 +87,6 @@ jobs:
             sudo systemctl restart moyeobab-api; \
           fi"
 
-      # - name: Smoke Test
-      #   run: |
-      #     $SSH_CMD "curl -sf http://
-
       - name: Notify Discord
         if: always()
         env:
@@ -97,21 +96,22 @@ jobs:
           AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
           RUN_NUM: ${{ github.event.workflow_run.run_number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ENV_NAME: ${{ github.event.workflow_run.head_branch == 'main' && 'Production' || 'Develop' }}
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            TITLE="BE 배포 성공"
-            DESC="새로운 버전이 EC2 서버에 정상적으로 배포되었습니다."
+            TITLE="BE 배포 성공 [$ENV_NAME]"
+            DESC="새로운 버전이 $ENV_NAME 서버에 정상적으로 배포되었습니다."
             COLOR=3066993
           elif [ "${{ job.status }}" = "cancelled" ]; then
-            TITLE="BE 배포 취소"
+            TITLE="BE 배포 취소 [$ENV_NAME]"
             DESC="배포가 취소되었습니다."
             COLOR=9807270
           elif [ "${{ steps.rollback.outcome }}" = "success" ]; then
-            TITLE="BE 배포 실패 (롤백 완료)"
+            TITLE="BE 배포 실패 (롤백 완료) [$ENV_NAME]"
             DESC="배포 실패로 이전 버전으로 롤백되었습니다."
             COLOR=16753920
           else
-            TITLE="BE 배포 실패 (롤백 실패)"
+            TITLE="BE 배포 실패 (롤백 실패) [$ENV_NAME]"
             DESC="롤백에 실패했습니다. 수동 확인이 필요합니다."
             COLOR=15158332
           fi
@@ -125,12 +125,14 @@ jobs:
             --arg author "$AUTHOR" \
             --arg msg "$COMMIT_MSG" \
             --arg url "$RUN_URL" \
+            --arg env "$ENV_NAME" \
             '{
               embeds: [{
                 title: $title,
                 description: $desc,
                 color: ($color | tonumber),
                 fields: [
+                  {name: "환경", value: $env, inline: true},
                   {name: "브랜치", value: $branch, inline: true},
                   {name: "빌드 번호", value: ("#" + $run_num), inline: true},
                   {name: "작성자", value: $author, inline: true},
