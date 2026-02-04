@@ -8,9 +8,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -22,6 +24,9 @@ public class RefreshTokenService {
 	private static final String FIELD_ISSUED_AT = "issuedAt";
 	private static final String FIELD_ROTATED_AT = "rotatedAt";
 	private static final String FIELD_DEVICE = "device";
+	// refresh 로테이션(compare-and-set + idx 교체)을 Redis 내부에서 원자적으로 수행하는 Lua 스크립트
+	// (동시 요청 레이스로 인한 중복 발급/인덱스 꼬임 방지)
+	private static final DefaultRedisScript<Long> ROTATE_SCRIPT = buildRotateScript();
 
 	private final StringRedisTemplate redisTemplate;
 	private final JwtProperties jwtProperties;
@@ -82,39 +87,52 @@ public class RefreshTokenService {
 	}
 
 	public Optional<String> rotate(Long memberId, String sid, String presentedToken, String device) {
-		String key = buildKey(memberId, sid);
-		Object storedHash = redisTemplate.opsForHash().get(key, FIELD_REFRESH_HASH);
-		if (storedHash == null) {
-			return Optional.empty();
-		}
-
-		String presentedHash = hash(presentedToken);
-		if (!presentedHash.equals(storedHash.toString())) {
-			//  즉시 세션 폐기 (sid 강제 로그아웃)
-			redisTemplate.delete(key);
-			// 잘못된 refresh 재사용 시 역인덱스도 함께 정리한다.
-			deleteIndex(storedHash.toString());
-			deleteIndex(presentedHash);
-			return Optional.empty();
-		}
+		String key = buildKey(memberId, sid); // refresh 세션 "본체" 키: refresh:{memberId}:{sid}
+		String presentedHash = hash(presentedToken); // 요청으로 들어온 refresh 토큰(원문)을 저장용 해시로 변환한다.
 
 		// Rotation: 새 refresh 발급 → 해시 갱신 → 기존 refresh는 즉시 무효화
-		String newRefreshToken = generateToken();
-		String newRefreshHash = hash(newRefreshToken);
-		Map<String, String> updates = new HashMap<>();
-		updates.put(FIELD_REFRESH_HASH, newRefreshHash);
-		updates.put(FIELD_ROTATED_AT, String.valueOf(Instant.now().toEpochMilli()));
-		if (device != null && !device.isBlank()) {
-			updates.put(FIELD_DEVICE, device);
+		// 새 refresh 토큰 "원문"은 클라이언트 쿠키로 내려줘야 하므로 JVM에서 생성한다.
+		// (Lua에는 원문을 넘기지 않고 해시만 넘긴다: Redis 원문 저장 금지 정책 유지)
+		String newRefreshToken = generateToken(); // 새 refresh 토큰(원문) - 성공 시에만 응답 쿠키로 내려간다.
+		String newRefreshHash = hash(newRefreshToken); // Redis에는 원문 대신 해시만 저장한다.
+
+		Duration ttl = Duration.ofDays(jwtProperties.refreshTokenExpireDays()); // refresh 세션 TTL(초로 변환해 Lua에 전달)
+		String deviceValue = (device == null) ? "" : device; // Lua는 null 전달이 번거로워 빈 문자열로 보정한다.
+
+		// Lua 1회 실행으로 "검증 + 교체 + 인덱스 갱신"을 원자적으로 처리한다.
+		// KEYS:
+		//   1) refresh:{memberId}:{sid}            - 세션 본체
+		//   2) refresh_idx:{presentedHash}        - 기존 refreshHash 역인덱스
+		//   3) refresh_idx:{newRefreshHash}       - 신규 refreshHash 역인덱스
+		// ARGV:
+		//   1) presentedHash, 2) newRefreshHash, 3) ttlSeconds, 4) rotatedAtMillis,
+		//   5) device(옵션), 6) indexValue(memberId:sid), 7) indexPrefix("refresh_idx:")
+		Long result = redisTemplate.execute(
+			ROTATE_SCRIPT,
+			List.of(
+				key, // KEYS[1]
+				buildIndexKey(presentedHash), // KEYS[2]
+				buildIndexKey(newRefreshHash) // KEYS[3]
+			),
+			presentedHash, // ARGV[1]
+			newRefreshHash, // ARGV[2]
+			String.valueOf(ttl.getSeconds()), // ARGV[3]
+			String.valueOf(Instant.now().toEpochMilli()), // ARGV[4]
+			deviceValue, // ARGV[5]
+			buildIndexValue(memberId, sid), // ARGV[6]
+			INDEX_PREFIX // ARGV[7]
+		);
+
+		// result:
+		//  1  = 성공(세션 해시/인덱스 교체 완료)
+		//  0  = 세션 없음(만료/삭제)
+		// -1  = 해시 불일치(재사용/탈취/레이스) → Lua 내부에서 세션/인덱스 정리
+		if (result == null || result <= 0) {
+			// 실패한 경우, JVM에서 미리 생성한 newRefreshToken은 응답으로 내려가지 않으므로 유효해지지 않는다.
+			return Optional.empty();
 		}
 
-		redisTemplate.opsForHash().putAll(key, updates);
-		Duration ttl = Duration.ofDays(jwtProperties.refreshTokenExpireDays());
-		redisTemplate.expire(key, ttl);
-		// 기존 refresh 해시 인덱스를 제거하고 신규 해시로 교체한다.
-		deleteIndex(presentedHash);
-		redisTemplate.opsForValue().set(buildIndexKey(newRefreshHash), buildIndexValue(memberId, sid), ttl);
-
+		// 성공한 경우에만 새 refresh 토큰 원문을 반환해 쿠키로 내려준다.
 		return Optional.of(newRefreshToken);
 	}
 
@@ -175,7 +193,7 @@ public class RefreshTokenService {
 	}
 
 	private String hash(String value) {
-		// Redis 저장용 해시 (원문 저장 금지 정책)
+		// Redis 저장용 해시
 		try {
 			MessageDigest digest = MessageDigest.getInstance("SHA-256");
 			byte[] hashed = digest.digest(value.getBytes(StandardCharsets.UTF_8));
@@ -185,6 +203,48 @@ public class RefreshTokenService {
 		}
 	}
 
-	public record RefreshSession(Long memberId, String sid) { // refresh 토큰으로 해석된 세션 정보
+	public record RefreshSession(Long memberId, String sid) { // refresh 토큰으로 얻은 세션 정보
+	}
+
+	private static DefaultRedisScript<Long> buildRotateScript() {
+		String script = """
+			-- KEYS[1] = refresh:{memberId}:{sid}
+			-- KEYS[2] = refresh_idx:{presentedHash}
+			-- KEYS[3] = refresh_idx:{newHash}
+			-- ARGV[1] = presentedHash
+			-- ARGV[2] = newHash
+			-- ARGV[3] = ttlSeconds
+			-- ARGV[4] = rotatedAtMillis
+			-- ARGV[5] = device (optional, empty allowed)
+			-- ARGV[6] = indexValue (memberId:sid)
+			-- ARGV[7] = indexPrefix (refresh_idx:)
+
+			-- 반환값:
+			--  1  : 성공(교체 완료)
+			--  0  : 세션 없음
+			-- -1  : 해시 불일치(재사용/탈취/레이스) → 세션/인덱스 폐기
+			local stored = redis.call('HGET', KEYS[1], 'refreshHash')
+			if not stored then
+			  return 0
+			end
+			if stored ~= ARGV[1] then
+			  redis.call('DEL', KEYS[1])
+			  redis.call('DEL', KEYS[2])
+			  redis.call('DEL', ARGV[7] .. stored)
+			  return -1
+			end
+			redis.call('HSET', KEYS[1], 'refreshHash', ARGV[2], 'rotatedAt', ARGV[4])
+			if ARGV[5] ~= nil and ARGV[5] ~= '' then
+			  redis.call('HSET', KEYS[1], 'device', ARGV[5])
+			end
+			redis.call('EXPIRE', KEYS[1], ARGV[3])
+			redis.call('DEL', KEYS[2])
+			redis.call('SET', KEYS[3], ARGV[6], 'EX', ARGV[3])
+			return 1
+			""";
+		DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
+		redisScript.setScriptText(script);
+		redisScript.setResultType(Long.class);
+		return redisScript;
 	}
 }
