@@ -20,6 +20,7 @@ public class RefreshTokenService {
 
 	private static final String KEY_PREFIX = "refresh:";
 	private static final String INDEX_PREFIX = "refresh_idx:"; // refreshHash -> memberId:sid 역인덱스 키 프리픽스
+	private static final String MAP_PREFIX = "refresh_map:"; // memberId -> (sid -> refreshHash) 세션 맵
 	private static final String FIELD_REFRESH_HASH = "refreshHash";
 	private static final String FIELD_ISSUED_AT = "issuedAt";
 	private static final String FIELD_ROTATED_AT = "rotatedAt";
@@ -45,6 +46,7 @@ public class RefreshTokenService {
 		String refreshToken = generateToken();
 		String refreshHash = hash(refreshToken);
 		String key = buildKey(memberId, sid);
+		String mapKey = buildMapKey(memberId);
 
 		Map<String, String> values = new HashMap<>();
 		values.put(FIELD_REFRESH_HASH, refreshHash);
@@ -58,6 +60,9 @@ public class RefreshTokenService {
 		redisTemplate.expire(key, ttl);
 		// refreshHash로 세션을 찾을 수 있도록 역인덱스를 함께 저장한다.
 		redisTemplate.opsForValue().set(buildIndexKey(refreshHash), buildIndexValue(memberId, sid), ttl);
+		// 멤버별 세션 목록을 유지해 revokeAll에서 KEYS/SCAN 없이 삭제할 수 있도록 한다.
+		redisTemplate.opsForHash().put(mapKey, sid, refreshHash);
+		redisTemplate.expire(mapKey, ttl);
 
 		return refreshToken;
 	}
@@ -88,6 +93,7 @@ public class RefreshTokenService {
 
 	public Optional<String> rotate(Long memberId, String sid, String presentedToken, String device) {
 		String key = buildKey(memberId, sid); // refresh 세션 "본체" 키: refresh:{memberId}:{sid}
+		String mapKey = buildMapKey(memberId); // memberId 기준 세션 맵: refresh_map:{memberId}
 		String presentedHash = hash(presentedToken); // 요청으로 들어온 refresh 토큰(원문)을 저장용 해시로 변환한다.
 
 		// Rotation: 새 refresh 발급 → 해시 갱신 → 기존 refresh는 즉시 무효화
@@ -104,15 +110,17 @@ public class RefreshTokenService {
 		//   1) refresh:{memberId}:{sid}            - 세션 본체
 		//   2) refresh_idx:{presentedHash}        - 기존 refreshHash 역인덱스
 		//   3) refresh_idx:{newRefreshHash}       - 신규 refreshHash 역인덱스
+		//   4) refresh_map:{memberId}             - 멤버별 세션 맵(sid -> refreshHash)
 		// ARGV:
 		//   1) presentedHash, 2) newRefreshHash, 3) ttlSeconds, 4) rotatedAtMillis,
-		//   5) device(옵션), 6) indexValue(memberId:sid), 7) indexPrefix("refresh_idx:")
+		//   5) device(옵션), 6) indexValue(memberId:sid), 7) indexPrefix("refresh_idx:"), 8) sid
 		Long result = redisTemplate.execute(
 			ROTATE_SCRIPT,
 			List.of(
 				key, // KEYS[1]
 				buildIndexKey(presentedHash), // KEYS[2]
-				buildIndexKey(newRefreshHash) // KEYS[3]
+				buildIndexKey(newRefreshHash), // KEYS[3]
+				mapKey // KEYS[4]
 			),
 			presentedHash, // ARGV[1]
 			newRefreshHash, // ARGV[2]
@@ -120,7 +128,8 @@ public class RefreshTokenService {
 			String.valueOf(Instant.now().toEpochMilli()), // ARGV[4]
 			deviceValue, // ARGV[5]
 			buildIndexValue(memberId, sid), // ARGV[6]
-			INDEX_PREFIX // ARGV[7]
+			INDEX_PREFIX, // ARGV[7]
+			sid // ARGV[8]
 		);
 
 		// result:
@@ -138,32 +147,41 @@ public class RefreshTokenService {
 
 	public void revoke(Long memberId, String sid) {
 		String key = buildKey(memberId, sid);
+		String mapKey = buildMapKey(memberId);
 		Object storedHash = redisTemplate.opsForHash().get(key, FIELD_REFRESH_HASH);
 		redisTemplate.delete(key);
 		// 세션 삭제 시 역인덱스도 함께 제거한다.
 		if (storedHash != null) {
 			deleteIndex(storedHash.toString());
 		}
+		redisTemplate.opsForHash().delete(mapKey, sid);
 	}
 
 	public void revokeAll(Long memberId) {
-		// memberId 기준으로 모든 세션 키를 찾아 일괄 폐기한다.
-		String pattern = KEY_PREFIX + memberId + ":*";
-		var keys = redisTemplate.keys(pattern);
-		if (keys == null || keys.isEmpty()) {
+		// memberId 기준 세션 맵에서 sid/refreshHash를 얻어 KEYS 없이 일괄 폐기한다.
+		String mapKey = buildMapKey(memberId);
+		Map<Object, Object> entries = redisTemplate.opsForHash().entries(mapKey);
+		if (entries == null || entries.isEmpty()) {
 			return;
 		}
-		var indexKeys = new java.util.ArrayList<String>(); // 세션 키에 매핑된 역인덱스를 함께 수집한다.
-		for (String key : keys) {
-			Object storedHash = redisTemplate.opsForHash().get(key, FIELD_REFRESH_HASH);
-			if (storedHash != null) {
-				indexKeys.add(buildIndexKey(storedHash.toString()));
+		var sessionKeys = new java.util.ArrayList<String>();
+		var indexKeys = new java.util.ArrayList<String>();
+		for (Map.Entry<Object, Object> entry : entries.entrySet()) {
+			String sid = String.valueOf(entry.getKey());
+			String refreshHash = String.valueOf(entry.getValue());
+			if (sid == null || sid.isBlank() || refreshHash == null || refreshHash.isBlank()) {
+				continue;
 			}
+			sessionKeys.add(buildKey(memberId, sid));
+			indexKeys.add(buildIndexKey(refreshHash));
 		}
-		redisTemplate.delete(keys);
+		if (!sessionKeys.isEmpty()) {
+			redisTemplate.delete(sessionKeys);
+		}
 		if (!indexKeys.isEmpty()) {
 			redisTemplate.delete(indexKeys);
 		}
+		redisTemplate.delete(mapKey);
 	}
 
 	private String buildKey(Long memberId, String sid) {
@@ -176,6 +194,10 @@ public class RefreshTokenService {
 
 	private String buildIndexValue(Long memberId, String sid) { // 역인덱스 값: "memberId:sid"
 		return memberId + ":" + sid;
+	}
+
+	private String buildMapKey(Long memberId) { // memberId -> (sid -> refreshHash) 세션 맵 키
+		return MAP_PREFIX + memberId;
 	}
 
 	private void deleteIndex(String refreshHash) { // 역인덱스 삭제 헬퍼
@@ -211,6 +233,7 @@ public class RefreshTokenService {
 			-- KEYS[1] = refresh:{memberId}:{sid}
 			-- KEYS[2] = refresh_idx:{presentedHash}
 			-- KEYS[3] = refresh_idx:{newHash}
+			-- KEYS[4] = refresh_map:{memberId}
 			-- ARGV[1] = presentedHash
 			-- ARGV[2] = newHash
 			-- ARGV[3] = ttlSeconds
@@ -218,6 +241,7 @@ public class RefreshTokenService {
 			-- ARGV[5] = device (optional, empty allowed)
 			-- ARGV[6] = indexValue (memberId:sid)
 			-- ARGV[7] = indexPrefix (refresh_idx:)
+			-- ARGV[8] = sid
 
 			-- 반환값:
 			--  1  : 성공(교체 완료)
@@ -225,12 +249,14 @@ public class RefreshTokenService {
 			-- -1  : 해시 불일치(재사용/탈취/레이스) → 세션/인덱스 폐기
 			local stored = redis.call('HGET', KEYS[1], 'refreshHash')
 			if not stored then
+			  redis.call('HDEL', KEYS[4], ARGV[8])
 			  return 0
 			end
 			if stored ~= ARGV[1] then
 			  redis.call('DEL', KEYS[1])
 			  redis.call('DEL', KEYS[2])
 			  redis.call('DEL', ARGV[7] .. stored)
+			  redis.call('HDEL', KEYS[4], ARGV[8])
 			  return -1
 			end
 			redis.call('HSET', KEYS[1], 'refreshHash', ARGV[2], 'rotatedAt', ARGV[4])
@@ -240,6 +266,8 @@ public class RefreshTokenService {
 			redis.call('EXPIRE', KEYS[1], ARGV[3])
 			redis.call('DEL', KEYS[2])
 			redis.call('SET', KEYS[3], ARGV[6], 'EX', ARGV[3])
+			redis.call('HSET', KEYS[4], ARGV[8], ARGV[2])
+			redis.call('EXPIRE', KEYS[4], ARGV[3])
 			return 1
 			""";
 		DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
