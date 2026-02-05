@@ -7,6 +7,14 @@ spring:
     username: ${DB_USERNAME:matchimban}
     password: ${DB_PASSWORD:matchimban}
     driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      connection-timeout: 3000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
   jpa:
     hibernate:
       ddl-auto: none
