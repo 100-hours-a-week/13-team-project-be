@@ -7,6 +7,14 @@ spring:
     username: ${DB_USERNAME:matchimban}
     password: ${DB_PASSWORD:matchimban}
     driver-class-name: org.postgresql.Driver
+
+#    hikari:
+#      maximum-pool-size: 50
+#      minimum-idle: 10
+#      connection-timeout: 3000
+#      idle-timeout: 600000
+#      max-lifetime: 1800000
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -32,6 +40,8 @@ kakao:
     redirect-uri: ${KAKAO_REDIRECT_URI:}
     frontend-redirect-url: ${KAKAO_FRONTEND_REDIRECT_URL:/}
     admin-key: ${KAKAO_ADMIN_KEY:}
+    connect-timeout: ${KAKAO_CONNECT_TIMEOUT:2s}
+    read-timeout: ${KAKAO_READ_TIMEOUT:3s}
 
 jwt:
   secret: ${JWT_SECRET:}
@@ -49,9 +59,30 @@ management:
       exposure:
         include: health, prometheus
 
+resilience4j:
+  circuitbreaker:
+    instances:
+      kakao:
+        sliding-window-type: COUNT_BASED # 호출 수 기준으로 실패율 집계
+        sliding-window-size: 20 # 최근 20건 호출을 기준으로 계산
+        minimum-number-of-calls: 10 # 최소 10건부터 실패율/슬로우콜 비율 계산
+        failure-rate-threshold: 50 # 실패율 50% 이상이면 OPEN
+        slow-call-rate-threshold: 50 # 느린 호출 비율이 50% 이상이면 OPEN
+        slow-call-duration-threshold: 2s # 2초 이상 걸리면 느린 호출로 집계
+        wait-duration-in-open-state: 10s # OPEN 유지 시간 (이후 HALF_OPEN 전환)
+        permitted-number-of-calls-in-half-open-state: 3 # HALF_OPEN에서 허용할 테스트 호출 수
+
 csrf:
   cookie-domain: ${CSRF_COOKIE_DOMAIN:}
 
 ai-recommendation:
   base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000/api/v1}
   timeout-ms: 5000
+
+#server:
+#  tomcat:
+#    threads:
+#      max: 500       # 동시에 일할 수 있는 최대 쓰레드 수 (기본 200)
+#      min-spare: 50  # 항상 최소한으로 유지할 쓰레드 수 (기본 10)
+#    accept-count: 200 # 쓰레드가 꽉 찼을 때 대기할 수 있는 큐의 크기
+#    max-connections: 8192 # 서버가 동시에 유지할 수 있는 최대 연결 수

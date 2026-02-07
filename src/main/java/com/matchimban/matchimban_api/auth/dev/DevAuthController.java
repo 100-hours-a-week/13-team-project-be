@@ -2,6 +2,7 @@ package com.matchimban.matchimban_api.auth.dev;
 
 import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
+import com.matchimban.matchimban_api.global.error.ApiException;
 import com.matchimban.matchimban_api.member.dto.MemberCreateRequest;
 import com.matchimban.matchimban_api.member.dto.OAuthAccountCreateRequest;
 import com.matchimban.matchimban_api.member.entity.Member;
@@ -31,10 +32,12 @@ import java.util.UUID;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -44,6 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DevAuthController {
 	private static final String PROVIDER_KAKAO = "KAKAO";
 	private static final String DEV_PROVIDER_MEMBER_ID = "dev-kakao-0001";
+	private static final String DEV_PROVIDER_MEMBER_ID_PREFIX = "dev-kakao-";
 	private static final String DEV_NICKNAME = "DevUser";
 
 	private final JwtTokenProvider jwtTokenProvider;
@@ -95,7 +99,55 @@ public class DevAuthController {
 			.body(ApiResult.of("dev_access_issued", data));
 	}
 
+	@GetMapping("/access/new")
+	@Transactional
+	@Operation(summary = "개발용 신규 계정 액세스 토큰 발급(항상 새로운 계정 생성)", description = "호출할 때마다 신규 테스트 계정을 생성하고 access 쿠키를 발급한다.")
+	@ApiResponse(responseCode = "200", description = "dev_access_issued_new")
+	public ResponseEntity<ApiResult<DevAccessData>> issueAccessTokenForNewMember() {
+		// 호출할 때마다 항상 신규 개발 계정을 생성한다.
+		Member member = createNewDevMember();
+		String sid = UUID.randomUUID().toString();
+		String accessToken = jwtTokenProvider.createAccessToken(member, sid);
+		HttpHeaders headers = new HttpHeaders();
+		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(accessToken).toString());
+
+		DevAccessData data = new DevAccessData(member.getId(), member.getNickname(), member.getStatus().name());
+		return ResponseEntity.ok()
+			.headers(headers)
+			.body(ApiResult.of("dev_access_issued_new", data));
+	}
+
+	@GetMapping("/access/member/{memberId}")
+	@Transactional
+	@Operation(summary = "(개발용) memberId으로 액세스 토큰 발급", description = "memberId가 개발용 계정인 경우에만 access 쿠키를 발급한다.")
+	@ApiResponse(responseCode = "200", description = "dev_access_issued_by_member")
+	@ApiResponse(responseCode = "403", description = "dev_account_required")
+	public ResponseEntity<ApiResult<DevAccessData>> issueAccessTokenByMemberId(@PathVariable Long memberId) {
+		// memberId로 토큰을 발급하는 기능은 개발 계정에만 허용.
+		OAuthAccount account = oauthAccountRepository.findByMemberId(memberId)
+			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "member_not_found"));
+
+		if (!isDevAccount(account)) {
+			throw new ApiException(HttpStatus.FORBIDDEN, "dev_account_required");
+		}
+
+		Member member = account.getMember();
+		ensureAgreements(member);
+		ensurePreferences(member);
+
+		String sid = UUID.randomUUID().toString();
+		String accessToken = jwtTokenProvider.createAccessToken(member, sid);
+		HttpHeaders headers = new HttpHeaders();
+		headers.add(HttpHeaders.SET_COOKIE, jwtTokenProvider.createAccessTokenCookie(accessToken).toString());
+
+		DevAccessData data = new DevAccessData(member.getId(), member.getNickname(), member.getStatus().name());
+		return ResponseEntity.ok()
+			.headers(headers)
+			.body(ApiResult.of("dev_access_issued_by_member", data));
+	}
+
 	private Member getOrCreateDevMember() {
+		// 고정 개발 계정(dev-kakao-0001)이 있으면 재사용.
 		Optional<OAuthAccount> existing = oauthAccountRepository
 			.findByProviderAndProviderMemberId(PROVIDER_KAKAO, DEV_PROVIDER_MEMBER_ID);
 		if (existing.isPresent()) {
@@ -126,7 +178,60 @@ public class DevAuthController {
 		return member;
 	}
 
+	private Member createNewDevMember() {
+		// dev-kakao-XXXX 형식의 순번 ID로 신규 개발 계정을 생성.
+		String providerMemberId = nextDevProviderMemberId();
+		String nickname = DEV_NICKNAME + "-" + providerMemberId.substring(DEV_PROVIDER_MEMBER_ID_PREFIX.length());
+
+		MemberCreateRequest memberRequest = new MemberCreateRequest(
+			nickname,
+			null,
+			null
+		);
+		Member member = memberMapper.toMember(memberRequest);
+		member.updateStatus(MemberStatus.PENDING);
+		memberRepository.save(member);
+
+		OAuthAccountCreateRequest accountRequest = new OAuthAccountCreateRequest(
+			PROVIDER_KAKAO,
+			providerMemberId,
+			member
+		);
+		OAuthAccount account = oauthAccountMapper.toOAuthAccount(accountRequest);
+		oauthAccountRepository.save(account);
+		ensureAgreements(member);
+		ensurePreferences(member);
+		return member;
+	}
+
+	private String nextDevProviderMemberId() {
+		// 가장 큰 dev-kakao-XXXX를 찾아 +1 (0001은 고정 계정으로 예약).
+		Optional<OAuthAccount> latest = oauthAccountRepository
+			.findTopByProviderAndProviderMemberIdStartingWithOrderByProviderMemberIdDesc(PROVIDER_KAKAO, DEV_PROVIDER_MEMBER_ID_PREFIX);
+		int nextSeq = 2; // reserve 0001 for the fixed dev account
+		if (latest.isPresent()) {
+			String providerMemberId = latest.get().getProviderMemberId();
+			if (providerMemberId.startsWith(DEV_PROVIDER_MEMBER_ID_PREFIX)) {
+				String suffix = providerMemberId.substring(DEV_PROVIDER_MEMBER_ID_PREFIX.length());
+				try {
+					nextSeq = Math.max(nextSeq, Integer.parseInt(suffix) + 1);
+				} catch (NumberFormatException ignored) {
+					nextSeq = 2;
+				}
+			}
+		}
+		return DEV_PROVIDER_MEMBER_ID_PREFIX + String.format("%04d", nextSeq);
+	}
+
+	private boolean isDevAccount(OAuthAccount account) {
+		// 규칙 기반(dev-kakao- 접두어)으로 개발 계정 여부 판단.
+		return PROVIDER_KAKAO.equalsIgnoreCase(account.getProvider())
+			&& account.getProviderMemberId() != null
+			&& account.getProviderMemberId().startsWith(DEV_PROVIDER_MEMBER_ID_PREFIX);
+	}
+
 	private void ensureAgreements(Member member) {
+		// 개발 계정에 대해 필수 약관을 자동 동의 처리.
 		List<Policy> requiredPolicies = policyRepository.findByIsRequiredTrue();
 		if (requiredPolicies.isEmpty()) {
 			return;
@@ -157,6 +262,10 @@ public class DevAuthController {
 	}
 
 	private void ensurePreferences(Member member) {
+		// 기본 취향값 규칙:
+		// - 알레르기: ALLERGY_GROUP의 첫 번째 항목
+		// - 선호: CATEGORY의 첫 번째 항목
+		// - 비선호: CATEGORY의 두 번째 항목(있고, 선호와 다를 때만)
 		List<FoodCategory> allergyOptions = foodCategoryRepository.findByCategoryType(FoodCategoryType.ALLERGY_GROUP);
 		List<FoodCategory> categoryOptions = foodCategoryRepository.findByCategoryType(FoodCategoryType.CATEGORY);
 

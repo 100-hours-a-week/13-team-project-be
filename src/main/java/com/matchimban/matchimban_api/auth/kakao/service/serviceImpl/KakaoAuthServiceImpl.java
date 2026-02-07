@@ -7,6 +7,8 @@ import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
 import com.matchimban.matchimban_api.global.error.ApiException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.UUID;
@@ -29,6 +31,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class KakaoAuthServiceImpl implements KakaoAuthService {
 	private static final Duration STATE_TTL = Duration.ofMinutes(5);
 	private static final String OAUTH_STATE_KEY_PREFIX = "oauth_state:";
+	private static final String KAKAO_CIRCUIT_BREAKER = "kakao";
 
 	private final KakaoOAuthProperties properties;
 	private final RestTemplate restTemplate;
@@ -42,7 +45,15 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 		StringRedisTemplate stringRedisTemplate
 	) {
 		this.properties = properties;
-		this.restTemplate = restTemplateBuilder.build();
+		// 외부 카카오 장애 시 서블릿 스레드가 오래 묶이지 않도록 타임아웃 설정.
+		Duration connectTimeout = properties.connectTimeout() != null
+			? properties.connectTimeout()
+			: Duration.ofSeconds(2);
+		Duration readTimeout = properties.readTimeout() != null
+			? properties.readTimeout()
+			: Duration.ofSeconds(3);
+		this.restTemplate = restTemplateBuilder.connectTimeout(connectTimeout).readTimeout(readTimeout)
+			.build();
 		this.objectMapper = objectMapper;
 		this.stringRedisTemplate = stringRedisTemplate;
 	}
@@ -75,6 +86,8 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 	}
 
 	@Override
+	// 카카오 장애 시 빠르게 실패하여 연쇄 장애를 방지.
+	@CircuitBreaker(name = KAKAO_CIRCUIT_BREAKER, fallbackMethod = "requestTokenFallback")
 	public KakaoTokenResponse requestToken(String code) {
 		validateOauthConfig();
 
@@ -112,6 +125,8 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 	}
 
 	@Override
+	// 카카오 장애 시 빠르게 실패하여 연쇄 장애를 방지.
+	@CircuitBreaker(name = KAKAO_CIRCUIT_BREAKER, fallbackMethod = "requestUserInfoFallback")
 	public KakaoUserInfo requestUserInfo(String accessToken) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(accessToken);
@@ -150,6 +165,8 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 	}
 
 	@Override
+	// 카카오 장애 시 빠르게 실패하여 연쇄 장애를 방지.
+	@CircuitBreaker(name = KAKAO_CIRCUIT_BREAKER, fallbackMethod = "unlinkByAdminKeyFallback")
 	public void unlinkByAdminKey(String providerMemberId) {
 		// 관리자 키 방식으로 카카오 연결 해제 (토큰 폐기 + 동의 철회)
 		if (providerMemberId == null || providerMemberId.isBlank()) {
@@ -201,5 +218,27 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 
 	private String buildOauthStateKey(String state) {
 		return OAUTH_STATE_KEY_PREFIX + state;
+	}
+
+	private KakaoTokenResponse requestTokenFallback(String code, Throwable throwable) {
+		throw translateKakaoException("kakao_token_request_failed", throwable);
+	}
+
+	private KakaoUserInfo requestUserInfoFallback(String accessToken, Throwable throwable) {
+		throw translateKakaoException("kakao_userinfo_request_failed", throwable);
+	}
+
+	private void unlinkByAdminKeyFallback(String providerMemberId, Throwable throwable) {
+		throw translateKakaoException("kakao_unlink_failed", throwable);
+	}
+
+	private ApiException translateKakaoException(String message, Throwable throwable) {
+		if (throwable instanceof CallNotPermittedException) {
+			return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "kakao_circuit_open");
+		}
+		if (throwable instanceof ApiException apiException) {
+			return apiException;
+		}
+		return new ApiException(HttpStatus.BAD_GATEWAY, message, throwable.getMessage());
 	}
 }
