@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.auth.kakao.config;
 
+import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "kakao.oauth")
@@ -12,6 +13,8 @@ public record KakaoOAuthProperties(
 	String clientSecret,
 	String redirectUri,
 	String frontendRedirectUrl,
-	String adminKey
+	String adminKey,
+	Duration connectTimeout,
+	Duration readTimeout
 ) {
 }
