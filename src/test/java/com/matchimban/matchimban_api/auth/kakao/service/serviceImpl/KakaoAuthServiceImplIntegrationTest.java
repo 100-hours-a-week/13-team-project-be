@@ -5,7 +5,12 @@ import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
 import com.matchimban.matchimban_api.global.error.ApiException;
+import io.github.resilience4j.bulkhead.ThreadPoolBulkhead;
+import io.github.resilience4j.bulkhead.ThreadPoolBulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +31,8 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+// 통합 테스트: 스프링 컨텍스트를 실제로 올리고, RestTemplate 호출을 Mock 서버로 대체해 검증한다.
+// @SpringBootTest는 애플리케이션 전체 빈을 로딩하는 통합 테스트용 애노테이션이다.
 @SpringBootTest(
         classes = MatchimbanApiApplication.class,
         properties = {
@@ -35,35 +42,50 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
                 "kakao.oauth.user-info-url=http://kakao.test/v2/user/me",
                 "kakao.oauth.unlink-url=http://kakao.test/v1/user/unlink",
                 "kakao.oauth.client-id=test-client",
-                "kakao.oauth.redirect-uri=http://localhost/callback"
+                "kakao.oauth.redirect-uri=http://localhost/callback",
+                // 테스트에서 벌크헤드 포화를 쉽게 재현하기 위해 스레드풀을 작게 설정
+                "resilience4j.thread-pool-bulkhead.instances.kakao.core-thread-pool-size=1",
+                "resilience4j.thread-pool-bulkhead.instances.kakao.max-thread-pool-size=1",
+                "resilience4j.thread-pool-bulkhead.instances.kakao.queue-capacity=0",
+                "resilience4j.thread-pool-bulkhead.instances.kakao.keep-alive-duration=1s"
         }
 )
 class KakaoAuthServiceImplIntegrationTest {
 
     @Autowired
+    // @Autowired는 스프링이 관리하는 빈을 주입한다.
     private KakaoAuthService kakaoAuthService;
 
     @MockitoBean
+    // @MockitoBean은 스프링 컨텍스트에 실제 빈 대신 Mockito mock을 넣는다.
     private StringRedisTemplate stringRedisTemplate;
 
     @Autowired
     private CircuitBreakerRegistry circuitBreakerRegistry;
 
+    @Autowired
+    private ThreadPoolBulkheadRegistry threadPoolBulkheadRegistry;
+
     private MockRestServiceServer server;
 
     @BeforeEach
+    // @BeforeEach는 각 테스트 전에 실행되는 초기화 메서드이다.
     void setUp() throws Exception {
         // 테스트 간 서킷 상태 공유 방지
         circuitBreakerRegistry.circuitBreaker("kakao").reset();
 
-        // 프록시 대상 객체에서 RestTemplate을 꺼내 MockRestServiceServer에 연결
+        // AOP 프록시 내부의 실제 객체를 꺼내기 위해 AopTestUtils 사용
+        // ReflectionTestUtils.getField로 private 필드(RestTemplate)를 접근
+        // MockRestServiceServer로 실제 HTTP 대신 가짜 응답을 구성
         KakaoAuthServiceImpl target = AopTestUtils.getTargetObject(kakaoAuthService);
         RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(target, "restTemplate");
         server = MockRestServiceServer.bindTo(restTemplate).build();
     }
 
     @Test
+    // 단위가 아니라 통합 테스트: 실제 빈 조합 + MockRestServiceServer로 외부 호출을 대체
     void 토큰요청_성공() {
+        // server.expect(...)는 "이 요청이 와야 한다"는 기대치를 설정
         server.expect(requestTo("http://kakao.test/oauth/token"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess("""
@@ -77,11 +99,14 @@ class KakaoAuthServiceImplIntegrationTest {
 
         KakaoTokenResponse response = kakaoAuthService.requestToken("code");
 
+        // AssertJ: 실제 응답 값이 기대값과 동일한지 확인
         assertThat(response.accessToken()).isEqualTo("access-1");
+        // server.verify()로 기대한 요청이 실제로 발생했는지 검증
         server.verify();
     }
 
     @Test
+    // 단위가 아니라 통합 테스트: 외부 응답을 Mock으로 주고 파싱 로직 검증
     void 유저정보요청_성공() {
         server.expect(requestTo("http://kakao.test/v2/user/me"))
                 .andExpect(method(HttpMethod.GET))
@@ -106,12 +131,14 @@ class KakaoAuthServiceImplIntegrationTest {
     }
 
     @Test
+    // 실패 응답(500)이 들어오면 ApiException(502)로 매핑되는지 확인
     void 토큰요청_실패시_배드게이트웨이_예외() {
         server.expect(requestTo("http://kakao.test/oauth/token"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withServerError());
 
-        // 카카오 오류 응답은 ApiException(BAD_GATEWAY)로 매핑되어야 함
+        // assertThatThrownBy는 "예외가 발생해야 한다"는 검증 문법
+        // .satisfies(...)로 예외 내부 값까지 상세 검증 가능
         assertThatThrownBy(() -> kakaoAuthService.requestToken("code"))
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> {
@@ -120,5 +147,42 @@ class KakaoAuthServiceImplIntegrationTest {
                 });
 
         server.verify();
+    }
+
+    @Test
+    // 벌크헤드가 포화되면 실제 요청이 거절되는지 확인하는 통합 테스트
+    void 벌크헤드_포화시_요청이_거절된다() throws Exception {
+        ThreadPoolBulkhead bulkhead = threadPoolBulkheadRegistry.bulkhead("kakao");
+        // CountDownLatch는 멀티스레드 동기화 도구
+        // started: 작업 시작 신호, release: 작업 종료 신호
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        // 첫 번째 호출을 벌크헤드 전용 풀에 넣고, 일부러 오래 점유시킴
+        CompletableFuture<String> blocker = bulkhead.executeSupplier(() -> {
+            started.countDown();
+            try {
+                release.await(3, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+            return "ok";
+        }).toCompletableFuture();
+
+        // 첫 번째 작업이 실제로 시작될 때까지 대기
+        assertThat(started.await(1, TimeUnit.SECONDS)).isTrue();
+
+        // 두 번째 호출은 벌크헤드가 꽉 찬 상태라 503으로 거절되어야 함
+        assertThatThrownBy(() -> kakaoAuthService.requestToken("code"))
+                .isInstanceOf(ApiException.class)
+                .satisfies(ex -> {
+                    ApiException api = (ApiException) ex;
+                    assertThat(api.getStatus().value()).isEqualTo(503);
+                    assertThat(api.getMessage()).isEqualTo("kakao_bulkhead_full");
+                });
+
+        // 막아둔 첫 번째 작업을 종료시켜 자원 정리
+        release.countDown();
+        blocker.get(1, TimeUnit.SECONDS);
     }
 }
