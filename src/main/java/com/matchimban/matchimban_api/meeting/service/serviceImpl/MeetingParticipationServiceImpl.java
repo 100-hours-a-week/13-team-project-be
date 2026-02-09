@@ -1,10 +1,12 @@
 package com.matchimban.matchimban_api.meeting.service.serviceImpl;
 
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
+import com.matchimban.matchimban_api.meeting.dto.MeetingParticipantSummary;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingRequest;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
+import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.meeting.service.MeetingParticipationService;
@@ -28,12 +30,9 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
 
     @Transactional
     public ParticipateMeetingResponse participateMeeting(Long memberId, ParticipateMeetingRequest request) {
-        if (memberId == null) {
-            throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized");
-        }
 
         Meeting meeting = meetingRepository.findByInviteCodeAndIsDeletedFalse(request.getInviteCode())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         Long meetingId = meeting.getId();
 
@@ -50,7 +49,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
         );
 
         if (activeCount >= meeting.getTargetHeadcount()) {
-            throw new ApiException(HttpStatus.CONFLICT, "meeting_full", "meeting is full");
+            throw new ApiException(MeetingErrorCode.MEETING_FULL);
         }
 
         if (existing != null) {
@@ -74,13 +73,13 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
     @Transactional
     public void leaveMeeting(Long memberId, Long meetingId) {
         Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found", "meeting not found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndMemberId(meetingId, memberId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "participant_not_found", "participant not found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.PARTICIPANT_NOT_FOUND));
 
         if (participant.getRole() == MeetingParticipant.Role.HOST || meeting.getHostMemberId().equals(memberId)) {
-            throw new ApiException(HttpStatus.CONFLICT, "host_cannot_leave", "host cannot leave meeting");
+            throw new ApiException(MeetingErrorCode.HOST_CANNOT_LEAVE);
         }
 
         if (participant.getStatus() == MeetingParticipant.Status.LEFT) {
@@ -99,11 +98,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
                     if (state == VoteStatus.GENERATING
                             || state == VoteStatus.OPEN
                             || state == VoteStatus.COUNTING) {
-                        throw new ApiException(
-                                HttpStatus.CONFLICT,
-                                "vote_in_progress",
-                                "cannot leave meeting while vote is generating/open/counting"
-                        );
+                        throw new ApiException(MeetingErrorCode.VOTE_IN_PROGRESS);
                     }
                 });
     }

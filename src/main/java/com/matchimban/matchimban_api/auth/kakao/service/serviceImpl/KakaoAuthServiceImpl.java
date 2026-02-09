@@ -2,11 +2,12 @@ package com.matchimban.matchimban_api.auth.kakao.service.serviceImpl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.matchimban.matchimban_api.auth.error.AuthErrorCode;
 import com.matchimban.matchimban_api.auth.kakao.config.KakaoOAuthProperties;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.io.IOException;
@@ -112,13 +113,12 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 			);
 			KakaoTokenResponse tokenResponse = response.getBody();
 			if (tokenResponse == null || tokenResponse.accessToken() == null) {
-				throw new ApiException(HttpStatus.BAD_GATEWAY, "kakao_token_request_failed");
+				throw new ApiException(AuthErrorCode.KAKAO_TOKEN_REQUEST_FAILED);
 			}
 			return tokenResponse;
 		} catch (RestClientResponseException ex) {
 			throw new ApiException(
-				HttpStatus.BAD_GATEWAY,
-				"kakao_token_request_failed",
+				AuthErrorCode.KAKAO_TOKEN_REQUEST_FAILED,
 				ex.getResponseBodyAsString()
 			);
 		}
@@ -142,7 +142,7 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 			);
 			String responseBody = response.getBody();
 			if (responseBody == null || responseBody.isBlank()) {
-				throw new ApiException(HttpStatus.BAD_GATEWAY, "kakao_userinfo_request_failed");
+				throw new ApiException(AuthErrorCode.KAKAO_TOKEN_REQUEST_FAILED);
 			}
 
 			JsonNode root = objectMapper.readTree(responseBody);
@@ -155,12 +155,11 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 			return new KakaoUserInfo(root, id, nickname, thumbnailImageUrl, profileImageUrl);
 		} catch (RestClientResponseException ex) {
 			throw new ApiException(
-				HttpStatus.BAD_GATEWAY,
-				"kakao_userinfo_request_failed",
+				AuthErrorCode.KAKAO_USERINFO_REQUEST_FAILED,
 				ex.getResponseBodyAsString()
 			);
 		} catch (IOException ex) {
-			throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", ex.getMessage());
+			throw new ApiException(AuthErrorCode.INTERNAL_SERVER_ERROR, ex.getMessage());
 		}
 	}
 
@@ -170,10 +169,10 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 	public void unlinkByAdminKey(String providerMemberId) {
 		// 관리자 키 방식으로 카카오 연결 해제 (토큰 폐기 + 동의 철회)
 		if (providerMemberId == null || providerMemberId.isBlank()) {
-			throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "providerMemberId is required");
+			throw new ApiException(AuthErrorCode.INVALID_REQUEST, "providerMemberId is required");
 		}
 		if (properties.adminKey() == null || properties.adminKey().isBlank()) {
-			throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", "Missing Kakao admin key");
+			throw new ApiException(AuthErrorCode.INTERNAL_SERVER_ERROR, "Missing Kakao admin key");
 		}
 
 		MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
@@ -193,13 +192,12 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 			);
 			// 카카오 응답이 2xx가 아니면 실패로 처리
 			if (!response.getStatusCode().is2xxSuccessful()) {
-				throw new ApiException(HttpStatus.BAD_GATEWAY, "kakao_unlink_failed");
+				throw new ApiException(AuthErrorCode.KAKAO_UNLINK_FAILED);
 			}
 		} catch (RestClientResponseException ex) {
 			// 카카오 응답 바디를 포함해 에러로 전파
 			throw new ApiException(
-				HttpStatus.BAD_GATEWAY,
-				"kakao_unlink_failed",
+				AuthErrorCode.KAKAO_UNLINK_FAILED,
 				ex.getResponseBodyAsString()
 			);
 		}
@@ -209,8 +207,7 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 		if (properties.clientId() == null || properties.clientId().isBlank()
 			|| properties.redirectUri() == null || properties.redirectUri().isBlank()) {
 			throw new ApiException(
-				HttpStatus.INTERNAL_SERVER_ERROR,
-				"internal_server_error",
+				AuthErrorCode.INTERNAL_SERVER_ERROR,
 				"Missing Kakao OAuth configuration"
 			);
 		}
@@ -234,11 +231,11 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 
 	private ApiException translateKakaoException(String message, Throwable throwable) {
 		if (throwable instanceof CallNotPermittedException) {
-			return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "kakao_circuit_open");
+			return new ApiException(AuthErrorCode.KAKAO_CIRCUIT_OPEN);
 		}
 		if (throwable instanceof ApiException apiException) {
 			return apiException;
 		}
-		return new ApiException(HttpStatus.BAD_GATEWAY, message, throwable.getMessage());
+		return new ApiException(AuthErrorCode.INTERNAL_SERVER_ERROR, throwable.getMessage());
 	}
 }

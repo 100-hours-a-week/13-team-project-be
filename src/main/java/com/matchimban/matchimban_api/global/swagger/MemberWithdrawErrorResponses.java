@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.global.swagger;
 
-import com.matchimban.matchimban_api.global.error.ErrorResponse;
+import com.matchimban.matchimban_api.global.error.api.ErrorResponse;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
