@@ -3,10 +3,11 @@ package com.matchimban.matchimban_api.member.onboarding.controller;
 import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
 import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import com.matchimban.matchimban_api.global.swagger.OnboardingErrorResponses;
 import com.matchimban.matchimban_api.member.entity.Member;
+import com.matchimban.matchimban_api.member.error.MemberErrorCode;
 import com.matchimban.matchimban_api.member.onboarding.dto.error.ConflictSelectionData;
 import com.matchimban.matchimban_api.member.onboarding.dto.error.MissingAgreementsData;
 import com.matchimban.matchimban_api.member.onboarding.dto.error.ValidationErrorData;
@@ -165,7 +166,7 @@ public class OnboardingController {
 		// SecurityContext에서 로그인된 사용자만 허용
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !(authentication.getPrincipal() instanceof MemberPrincipal principal)) {
-			throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized");
+			throw new ApiException(MemberErrorCode.UNAUTHORIZED);
 		}
 		return principal;
 	}

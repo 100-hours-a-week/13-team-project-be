@@ -1,10 +1,12 @@
 package com.matchimban.matchimban_api.vote.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.vote.ai.dto.AiRecommendationRequest;
 import com.matchimban.matchimban_api.vote.ai.dto.AiRecommendationResponse;
 import java.time.Duration;
+
+import com.matchimban.matchimban_api.vote.error.VoteErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,8 +35,8 @@ public class RecommendationClient {
                         resp.bodyToMono(String.class).defaultIfEmpty("")
                                 .map(body -> {
                                     HttpStatus s = HttpStatus.valueOf(resp.statusCode().value());
-                                    String msg = mapStatusToMessage(s);
-                                    return new ApiException(mapStatusToHttpStatusForBe(s), msg, body);
+                                    VoteErrorCode ec = mapAiStatusToErrorCode(s);
+                                    return new ApiException(ec, body);
                                 })
                 )
 
@@ -55,31 +57,21 @@ public class RecommendationClient {
 
                         return parsed;
                     } catch (Exception e) {
-                        throw new ApiException(HttpStatus.BAD_GATEWAY, "recommendation_failed",
+                        throw new ApiException(VoteErrorCode.AI_RESPONSE_INVALID,
                                 "Failed to parse AI response: " + e.getMessage() + " | raw=" + raw);
                     }
                 })
                 .block();
     }
 
-    private String mapStatusToMessage(HttpStatus aiStatus) {
+    private VoteErrorCode mapAiStatusToErrorCode(HttpStatus aiStatus) {
         return switch (aiStatus) {
-            case BAD_REQUEST -> "invalid_request";
-            case UNPROCESSABLE_ENTITY -> "unprocessable_preferences";
-            case NOT_FOUND -> "no_restaurants_found";
-            case INTERNAL_SERVER_ERROR -> "recommendation_failed";
-            case SERVICE_UNAVAILABLE -> "database_unavailable";
-            default -> "recommendation_failed";
-        };
-    }
-
-    private HttpStatus mapStatusToHttpStatusForBe(HttpStatus aiStatus) {
-        return switch (aiStatus) {
-            case BAD_REQUEST -> HttpStatus.BAD_REQUEST;
-            case UNPROCESSABLE_ENTITY -> HttpStatus.UNPROCESSABLE_ENTITY;
-            case NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case SERVICE_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
-            default -> HttpStatus.BAD_GATEWAY;
+            case NOT_FOUND -> VoteErrorCode.NO_RESTAURANTS_FOUND;
+            case SERVICE_UNAVAILABLE -> VoteErrorCode.AI_RECOMMENDATION_FAILED;
+            case INTERNAL_SERVER_ERROR -> VoteErrorCode.AI_RECOMMENDATION_FAILED;
+            case BAD_REQUEST -> VoteErrorCode.AI_RECOMMENDATION_FAILED;
+            case UNPROCESSABLE_ENTITY -> VoteErrorCode.AI_RECOMMENDATION_FAILED;
+            default -> VoteErrorCode.AI_RECOMMENDATION_FAILED;
         };
     }
 }

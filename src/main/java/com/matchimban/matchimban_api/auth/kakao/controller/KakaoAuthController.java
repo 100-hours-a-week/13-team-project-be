@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.auth.kakao.controller;
 
+import com.matchimban.matchimban_api.auth.error.AuthErrorCode;
 import com.matchimban.matchimban_api.auth.kakao.config.KakaoOAuthProperties;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoAuthCodeRequest;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoAuthCallbackResponse;
@@ -12,7 +13,7 @@ import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
 import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
 import com.matchimban.matchimban_api.member.entity.Member;
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.global.swagger.CommonAuthErrorResponses;
 import com.matchimban.matchimban_api.global.swagger.InternalServerErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -83,13 +84,13 @@ public class KakaoAuthController {
 
 		if (error != null) {
 			String detail = errorDescription != null ? errorDescription : error;
-			throw new ApiException(HttpStatus.FORBIDDEN, "oauth_access_denied", detail);
+			throw new ApiException(AuthErrorCode.OAUTH_ACCESS_DENIED, detail);
 		}
 		if (!kakaoAuthService.consumeState(state)) {
-			throw new ApiException(HttpStatus.UNAUTHORIZED, "invalid_oauth_state");
+			throw new ApiException(AuthErrorCode.INVALID_OAUTH_STATE);
 		}
 		if (code == null || code.isBlank()) {
-			throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request");
+			throw new ApiException(AuthErrorCode.INVALID_REQUEST, "missing_code");
 		}
 
 		KakaoTokenResponse tokenResponse = kakaoAuthService.requestToken(code);

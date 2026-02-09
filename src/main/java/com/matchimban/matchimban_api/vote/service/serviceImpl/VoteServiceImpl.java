@@ -1,8 +1,10 @@
 package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
+import com.matchimban.matchimban_api.global.error.code.CommonErrorCode;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
+import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.vote.dto.request.FinalSelectionRequest;
@@ -13,6 +15,8 @@ import com.matchimban.matchimban_api.vote.dto.response.VoteCandidatesResponse;
 import com.matchimban.matchimban_api.vote.dto.response.VoteResultsResponse;
 import com.matchimban.matchimban_api.vote.dto.response.VoteStatusResponse;
 import com.matchimban.matchimban_api.vote.entity.*;
+import com.matchimban.matchimban_api.vote.entity.VoteStatus;
+import com.matchimban.matchimban_api.vote.error.VoteErrorCode;
 import com.matchimban.matchimban_api.vote.event.VoteCandidateGenerationRequestedEvent;
 import com.matchimban.matchimban_api.vote.repository.MeetingFinalSelectionRepository;
 import com.matchimban.matchimban_api.vote.repository.MeetingRestaurantCandidateRepository;
@@ -27,7 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,24 +53,24 @@ public class VoteServiceImpl implements VoteService {
     @Transactional
     public CreateVoteResponse createVote(Long meetingId, Long memberId) {
         Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         if (!meeting.getHostMemberId().equals(memberId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_host");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_HOST);
         }
 
         boolean isActiveParticipant = meetingParticipantRepository.existsByMeetingIdAndMemberIdAndStatus(
                 meetingId, memberId, MeetingParticipant.Status.ACTIVE
         );
         if (!isActiveParticipant) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_active_participant");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_ACTIVE_PARTICIPANT);
         }
 
         long activeCount = meetingParticipantRepository.countByMeetingIdAndStatus(
                 meetingId, MeetingParticipant.Status.ACTIVE
         );
         if (activeCount != meeting.getTargetHeadcount()) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_create_not_ready_headcount",
+            throw new ApiException(VoteErrorCode.VOTE_CREATE_NOT_READY_HEADCOUNT,
                     "activeCount=" + activeCount + ", target=" + meeting.getTargetHeadcount());
         }
 
@@ -79,7 +82,7 @@ public class VoteServiceImpl implements VoteService {
         }
 
         Vote v2 = voteRepository.findByMeetingIdAndRound(meetingId, (short) 2)
-                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", "round2_missing"));
+                .orElseThrow(() -> new ApiException(CommonErrorCode.INTERNAL_SERVER_ERROR, "round2_missing"));
 
         VoteStatus s1 = v1.getStatus();
 
@@ -145,23 +148,23 @@ public class VoteServiceImpl implements VoteService {
                 meetingId, memberId, MeetingParticipant.Status.ACTIVE
         );
         if (!isActive) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_active_participant");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_ACTIVE_PARTICIPANT);
         }
 
         Vote vote = voteRepository.findById(voteId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "vote_not_found"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.VOTE_NOT_FOUND));
 
         if (vote.getMeeting() == null || !vote.getMeeting().getId().equals(meetingId)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "vote_not_found");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_FOUND);
         }
 
         if (vote.getStatus() != VoteStatus.OPEN) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_not_open");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_OPEN);
         }
 
         List<VoteCandidatesResponse.Candidate> items = meetingRestaurantCandidateRepository.findCandidateDtosByVoteId(voteId);
         if (items.isEmpty()) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_candidates_not_ready");
+            throw new ApiException(VoteErrorCode.VOTE_CANDIDATES_NOT_READY);
         }
 
         return new VoteCandidatesResponse(items);
@@ -171,21 +174,21 @@ public class VoteServiceImpl implements VoteService {
     public void submitVote(Long meetingId, Long voteId, Long memberId, VoteSubmitRequest request) {
 
         MeetingParticipant participant = meetingParticipantRepository.findByMeetingIdAndMemberId(meetingId, memberId)
-                .orElseThrow(() -> new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_participant"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.FORBIDDEN_NOT_PARTICIPANT));
 
         if (participant.getStatus() != MeetingParticipant.Status.ACTIVE) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_active_participant");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_ACTIVE_PARTICIPANT);
         }
 
         Vote vote = voteRepository.findById(voteId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "vote_not_found"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.VOTE_NOT_FOUND));
 
         if (vote.getMeeting() == null || !vote.getMeeting().getId().equals(meetingId)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "vote_not_found");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_FOUND);
         }
 
         if (vote.getStatus() != VoteStatus.OPEN) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_not_open");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_OPEN);
         }
 
         if (voteSubmissionRepository.existsByVoteIdAndParticipantId(voteId, participant.getId())) {
@@ -195,10 +198,7 @@ public class VoteServiceImpl implements VoteService {
         int expectedCount = vote.getMeeting().getSwipeCount();
         int actualCount = (request.getItems() == null) ? 0 : request.getItems().size();
         if (actualCount != expectedCount) {
-            throw new ApiException(
-                    HttpStatus.BAD_REQUEST,
-                    "invalid_request",
-                    "items.size=" + actualCount + ", expected=" + expectedCount
+            throw new ApiException(CommonErrorCode.VALIDATION_FAILED, "items.size=" + actualCount + ", expected=" + expectedCount
             );
         }
 
@@ -208,12 +208,12 @@ public class VoteServiceImpl implements VoteService {
 
         long distinctCount = candidateIds.stream().distinct().count();
         if (distinctCount != candidateIds.size()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "duplicate_candidate_id");
+            throw new ApiException(CommonErrorCode.VALIDATION_FAILED, "duplicate_candidate_id");
         }
 
         List<Long> validIds = meetingRestaurantCandidateRepository.findIdsByVoteIdAndIdIn(voteId, candidateIds);
         if (validIds.size() != candidateIds.size()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "candidate_not_in_vote");
+            throw new ApiException(CommonErrorCode.VALIDATION_FAILED, "candidate_not_in_vote");
         }
 
         Map<Long, MeetingRestaurantCandidate> candidateMap =
@@ -251,14 +251,14 @@ public class VoteServiceImpl implements VoteService {
                 meetingId, memberId, MeetingParticipant.Status.ACTIVE
         );
         if (!isActive) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_active_participant");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_ACTIVE_PARTICIPANT);
         }
 
         Vote vote = voteRepository.findById(voteId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "vote_not_found"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.VOTE_NOT_FOUND));
 
         if (vote.getMeeting() == null || !vote.getMeeting().getId().equals(meetingId)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "vote_not_found");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_FOUND);
         }
 
         long totalCount = meetingParticipantRepository.countByMeetingIdAndStatus(
@@ -277,25 +277,25 @@ public class VoteServiceImpl implements VoteService {
                 meetingId, memberId, MeetingParticipant.Status.ACTIVE
         );
         if (!isActive) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_active_participant");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_ACTIVE_PARTICIPANT);
         }
 
         Vote vote = voteRepository.findById(voteId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "vote_not_found"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.VOTE_NOT_FOUND));
 
         if (vote.getMeeting() == null || !vote.getMeeting().getId().equals(meetingId)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "vote_not_found");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_FOUND);
         }
 
         if (vote.getStatus() != VoteStatus.COUNTED) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_not_counted_yet");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_COUNTED_YET);
         }
 
         List<VoteResultsResponse.Item> items =
                 meetingRestaurantCandidateRepository.findTop3ResultItems(voteId);
 
         if (items.isEmpty()) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", "top3_missing");
+            throw new ApiException(CommonErrorCode.INTERNAL_SERVER_ERROR, "top3_missing");
         }
 
         Long hostMemberId = vote.getMeeting().getHostMemberId();
@@ -306,41 +306,41 @@ public class VoteServiceImpl implements VoteService {
     public void startRevote(Long meetingId, Long voteId, Long memberId) {
 
         Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         if (!Objects.equals(meeting.getHostMemberId(), memberId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_host");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_HOST);
         }
 
         if (meetingFinalSelectionRepository.existsByMeetingId(meetingId)) {
-            throw new ApiException(HttpStatus.CONFLICT, "final_already_selected");
+            throw new ApiException(VoteErrorCode.FINAL_ALREADY_SELECTED);
         }
 
         Vote v1 = voteRepository.findById(voteId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "vote_not_found"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.VOTE_NOT_FOUND));
 
         if (v1.getMeeting() == null || !Objects.equals(v1.getMeeting().getId(), meetingId)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "vote_not_found");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_FOUND);
         }
         if (v1.getRound() != 1) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "not_round1_vote");
+            throw new ApiException(CommonErrorCode.VALIDATION_FAILED, "not_round1_vote");
         }
         if (v1.getStatus() != VoteStatus.COUNTED) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_not_counted_yet");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_COUNTED_YET);
         }
 
         Instant deadline = meeting.getVoteDeadlineAt();
         Instant now = Instant.now();
         if (!now.isBefore(deadline)) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_deadline_passed",
+            throw new ApiException(VoteErrorCode.VOTE_DEADLINE_PASSED,
                     "now=" + now + ", deadline=" + deadline);
         }
 
         Vote v2 = voteRepository.findByMeetingIdAndRound(meetingId, (short) 2)
-                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error", "round2_missing"));
+                .orElseThrow(() -> new ApiException(CommonErrorCode.INTERNAL_SERVER_ERROR, "round2_missing"));
 
         if (!meetingRestaurantCandidateRepository.existsByVoteId(v2.getId())) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_candidates_not_ready");
+            throw new ApiException(VoteErrorCode.VOTE_CANDIDATES_NOT_READY);
         }
 
         if (v2.getStatus() == VoteStatus.OPEN) {
@@ -352,28 +352,28 @@ public class VoteServiceImpl implements VoteService {
             return;
         }
 
-        throw new ApiException(HttpStatus.CONFLICT, "revote_not_available", "status=" + v2.getStatus());
+        throw new ApiException(VoteErrorCode.REVOTE_NOT_AVAILABLE, "status=" + v2.getStatus());
     }
 
     @Transactional
     public void finalizeSelection(Long meetingId, Long voteId, Long memberId, FinalSelectionRequest request) {
 
         Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         if (!Objects.equals(meeting.getHostMemberId(), memberId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_host");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_HOST);
         }
 
         Vote vote = voteRepository.findById(voteId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "vote_not_found"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.VOTE_NOT_FOUND));
 
         if (vote.getMeeting() == null || !vote.getMeeting().getId().equals(meetingId)) {
-            throw new ApiException(HttpStatus.NOT_FOUND, "vote_not_found");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_FOUND);
         }
 
         if (vote.getStatus() != VoteStatus.COUNTED) {
-            throw new ApiException(HttpStatus.CONFLICT, "vote_not_counted_yet");
+            throw new ApiException(VoteErrorCode.VOTE_NOT_COUNTED_YET);
         }
 
         if (meetingFinalSelectionRepository.existsByMeetingId(meetingId)) {
@@ -381,15 +381,15 @@ public class VoteServiceImpl implements VoteService {
         }
 
         MeetingRestaurantCandidate candidate = meetingRestaurantCandidateRepository.findByIdWithVoteAndMeeting(request.getCandidateId())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "candidate_not_found"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.CANDIDATE_NOT_FOUND));
 
         if (candidate.getVote() == null || candidate.getVote().getId() == null || !candidate.getVote().getId().equals(voteId)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "candidate_not_in_vote");
+            throw new ApiException(CommonErrorCode.VALIDATION_FAILED, "candidate_not_in_vote");
         }
 
         Integer rr = candidate.getFinalRank();
         if (rr == null || rr < 1 || rr > 3) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request", "candidate_not_in_top3");
+            throw new ApiException(CommonErrorCode.VALIDATION_FAILED, "candidate_not_in_top3");
         }
 
         MeetingFinalSelection fs = MeetingFinalSelection.builder()
@@ -407,11 +407,11 @@ public class VoteServiceImpl implements VoteService {
                 meetingId, memberId, MeetingParticipant.Status.ACTIVE
         );
         if (!isActive) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_active_participant");
+            throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_ACTIVE_PARTICIPANT);
         }
 
         return meetingFinalSelectionRepository.findFinalSelectionResponseByMeetingId(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "final_selection_not_found"));
+                .orElseThrow(() -> new ApiException(VoteErrorCode.FINAL_SELECTION_NOT_FOUND));
     }
 
 

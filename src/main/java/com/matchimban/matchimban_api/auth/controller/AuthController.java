@@ -1,10 +1,11 @@
 package com.matchimban.matchimban_api.auth.controller;
 
+import com.matchimban.matchimban_api.auth.error.AuthErrorCode;
 import com.matchimban.matchimban_api.auth.jwt.JwtProperties;
 import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
 import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.global.swagger.AuthRefreshErrorResponses;
 import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import com.matchimban.matchimban_api.member.entity.Member;
@@ -65,7 +66,7 @@ public class AuthController {
 		RefreshTokenService.RefreshSession session = sessionOpt.get();
 
 		Member member = memberRepository.findById(session.memberId())
-			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
+			.orElseThrow(() -> new ApiException(AuthErrorCode.UNAUTHORIZED, "unauthorized"));
 		if (member.getStatus() == MemberStatus.DELETED) {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(ApiResult.of("account_deleted"));

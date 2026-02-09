@@ -1,7 +1,8 @@
 package com.matchimban.matchimban_api.auth.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.matchimban.matchimban_api.global.error.ErrorResponse;
+import com.matchimban.matchimban_api.global.error.api.ErrorResponse;
+import com.matchimban.matchimban_api.global.error.code.ErrorCode;
 import com.matchimban.matchimban_api.member.entity.enums.MemberStatus;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -85,9 +86,29 @@ public class MemberStatusFilter extends OncePerRequestFilter {
 		return path.startsWith(PREFERENCES_PATH) || path.equals(USER_ME_PATH);
 	}
 
-	private void writeError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
-		response.setStatus(status.value());
+    private void writeError(HttpServletResponse response, HttpStatus status, String message) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+        ErrorResponse body = new ErrorResponse(
+                message,
+                message,
+                null,
+                null
+        );
+        objectMapper.writeValue(response.getWriter(), body);
+    }
+
+	private void writeError(HttpServletResponse response, HttpStatus status, ErrorCode ec, Object data) throws IOException {
+		response.setStatus(ec.getStatus().value());
 		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-		objectMapper.writeValue(response.getWriter(), ErrorResponse.of(message));
+
+        ErrorResponse body = new ErrorResponse(
+                ec.getCode(),
+                ec.getMessage(),
+                null,
+                data
+        );
+		objectMapper.writeValue(response.getWriter(),body);
 	}
 }

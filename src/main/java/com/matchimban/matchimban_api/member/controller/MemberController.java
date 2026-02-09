@@ -3,10 +3,11 @@ package com.matchimban.matchimban_api.member.controller;
 import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import com.matchimban.matchimban_api.global.swagger.MemberWithdrawErrorResponses;
 import com.matchimban.matchimban_api.member.dto.response.MemberMeResponse;
+import com.matchimban.matchimban_api.member.error.MemberErrorCode;
 import com.matchimban.matchimban_api.member.service.MemberService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -71,7 +72,7 @@ public class MemberController {
 	private Long requireMemberId() {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication == null || !(authentication.getPrincipal() instanceof MemberPrincipal principal)) {
-			throw new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized");
+			throw new ApiException(MemberErrorCode.UNAUTHORIZED);
 		}
 		return principal.memberId();
 	}

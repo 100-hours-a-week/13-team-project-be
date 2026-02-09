@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.member.onboarding.service.serviceImpl;
 
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.member.entity.FoodCategory;
 import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.member.entity.MemberAgreement;
@@ -9,6 +9,7 @@ import com.matchimban.matchimban_api.member.entity.Policy;
 import com.matchimban.matchimban_api.member.entity.enums.FoodCategoryType;
 import com.matchimban.matchimban_api.member.entity.enums.MemberCategoryRelationType;
 import com.matchimban.matchimban_api.member.entity.enums.MemberStatus;
+import com.matchimban.matchimban_api.member.error.MemberErrorCode;
 import com.matchimban.matchimban_api.member.onboarding.dto.error.FieldErrorData;
 import com.matchimban.matchimban_api.member.onboarding.dto.request.AgreementConsentRequest;
 import com.matchimban.matchimban_api.member.onboarding.dto.request.AgreementConsentRequestItem;
@@ -26,7 +27,6 @@ import com.matchimban.matchimban_api.member.repository.MemberRepository;
 import com.matchimban.matchimban_api.member.repository.PolicyRepository;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -75,7 +75,7 @@ public class OnboardingServiceImpl implements OnboardingService {
 	@Transactional(readOnly = true)
 	public AgreementDetailResponse getAgreementDetail(Long agreementId) {
 		Policy policy = policyRepository.findById(agreementId)
-			.orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "invalid_request"));
+			.orElseThrow(() -> new ApiException(MemberErrorCode.AGREEMENT_NOT_FOUND_AS_INVALID_REQUEST));
 		return new AgreementDetailResponse(policy.getId(), policy.getTitle(), policy.getTermsContent());
 	}
 
@@ -83,7 +83,7 @@ public class OnboardingServiceImpl implements OnboardingService {
 	@Transactional
 	public AgreementConsentResult acceptAgreements(Long memberId, AgreementConsentRequest request) {
 		if (request == null || request.agreements() == null) {
-			throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request");
+			throw new ApiException(MemberErrorCode.INVALID_REQUEST);
 		}
 
 		// 필수 약관 미동의가 있는지 먼저 확인한다.
@@ -91,7 +91,7 @@ public class OnboardingServiceImpl implements OnboardingService {
 		Map<Long, Boolean> consentMap = new HashMap<>();
 		for (AgreementConsentRequestItem item : agreements) {
 			if (item == null || item.agreementId() == null) {
-				throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request");
+				throw new ApiException(MemberErrorCode.INVALID_REQUEST);
 			}
 			consentMap.put(item.agreementId(), item.agreed());
 		}
@@ -113,11 +113,11 @@ public class OnboardingServiceImpl implements OnboardingService {
 
 		List<Policy> policies = policyRepository.findAllById(agreementIds);
 		if (policies.size() != agreementIds.size()) {
-			throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request");
+			throw new ApiException(MemberErrorCode.INVALID_REQUEST);
 		}
 
 		Member member = memberRepository.findById(memberId)
-			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
+			.orElseThrow(() -> new ApiException(MemberErrorCode.UNAUTHORIZED));
 
 		// 동의 내역 저장
 		Instant now = Instant.now();
@@ -178,7 +178,7 @@ public class OnboardingServiceImpl implements OnboardingService {
 	@Transactional
 	public PreferencesSaveResult savePreferences(Long memberId, PreferencesSaveRequest request) {
 		if (request == null) {
-			throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request");
+			throw new ApiException(MemberErrorCode.INVALID_REQUEST);
 		}
 
 		List<String> allergyCodes = safeList(request.allergyGroup());
@@ -212,7 +212,7 @@ public class OnboardingServiceImpl implements OnboardingService {
 		}
 
 		Member member = memberRepository.findById(memberId)
-			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
+			.orElseThrow(() -> new ApiException(MemberErrorCode.UNAUTHORIZED));
 
 		// 기존 매핑을 조회해 변경분만 반영한다.
 		List<MemberCategoryMapping> existingMappings = memberCategoryMappingRepository
