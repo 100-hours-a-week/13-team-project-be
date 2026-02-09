@@ -99,16 +99,16 @@ public class MemberStatusFilter extends OncePerRequestFilter {
         objectMapper.writeValue(response.getWriter(), body);
     }
 
-	private void writeError(HttpServletResponse response, HttpStatus status, ErrorCode ec, Object data) throws IOException {
-		response.setStatus(ec.getStatus().value());
-		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-        ErrorResponse body = new ErrorResponse(
-                ec.getCode(),
-                ec.getMessage(),
-                null,
-                data
-        );
-		objectMapper.writeValue(response.getWriter(),body);
-	}
+//	private void writeError(HttpServletResponse response, HttpStatus status, ErrorCode ec, Object data) throws IOException {
+//		response.setStatus(ec.getStatus().value());
+//		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+//
+//        ErrorResponse body = new ErrorResponse(
+//                ec.getCode(),
+//                ec.getMessage(),
+//                null,
+//                data
+//        );
+//		objectMapper.writeValue(response.getWriter(),body);
+//	}
 }
