@@ -7,11 +7,16 @@ import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
 import com.matchimban.matchimban_api.global.error.ApiException;
+import io.github.resilience4j.bulkhead.BulkheadFullException;
+import io.github.resilience4j.bulkhead.ThreadPoolBulkhead;
+import io.github.resilience4j.bulkhead.ThreadPoolBulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
@@ -32,17 +37,21 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 	private static final Duration STATE_TTL = Duration.ofMinutes(5);
 	private static final String OAUTH_STATE_KEY_PREFIX = "oauth_state:";
 	private static final String KAKAO_CIRCUIT_BREAKER = "kakao";
+	private static final String KAKAO_THREADPOOL_BULKHEAD = "kakao";
 
 	private final KakaoOAuthProperties properties;
 	private final RestTemplate restTemplate;
 	private final ObjectMapper objectMapper;
 	private final StringRedisTemplate stringRedisTemplate;
+	// 카카오 호출 전용 스레드풀 벌크헤드(동기 RestTemplate 호출을 별도 풀로 격리)
+	private final ThreadPoolBulkhead kakaoThreadPoolBulkhead;
 
 	public KakaoAuthServiceImpl(
 		KakaoOAuthProperties properties,
 		RestTemplateBuilder restTemplateBuilder,
 		ObjectMapper objectMapper,
-		StringRedisTemplate stringRedisTemplate
+		StringRedisTemplate stringRedisTemplate,
+		ThreadPoolBulkheadRegistry threadPoolBulkheadRegistry
 	) {
 		this.properties = properties;
 		// 외부 카카오 장애 시 서블릿 스레드가 오래 묶이지 않도록 타임아웃 설정.
@@ -56,6 +65,10 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 			.build();
 		this.objectMapper = objectMapper;
 		this.stringRedisTemplate = stringRedisTemplate;
+		// 카카오 호출 전용 스레드풀 벌크헤드 사용 (전용 풀로 격리)
+		// - 서블릿 스레드가 외부 호출로 잠기는 것을 방지
+		// - 점심 피크 등 트래픽 몰림에서 전체 API가 멈추는 상황을 완화
+		this.kakaoThreadPoolBulkhead = threadPoolBulkheadRegistry.bulkhead(KAKAO_THREADPOOL_BULKHEAD);
 	}
 
 	@Override
@@ -105,10 +118,13 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 
 		HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 		try {
-			ResponseEntity<KakaoTokenResponse> response = restTemplate.postForEntity(
-				properties.tokenUrl(),
-				request,
-				KakaoTokenResponse.class
+			// 카카오 API 호출은 전용 스레드풀에서 실행하여 서블릿 스레드 고갈을 방지
+			ResponseEntity<KakaoTokenResponse> response = executeWithKakaoBulkhead(() ->
+				restTemplate.postForEntity(
+					properties.tokenUrl(),
+					request,
+					KakaoTokenResponse.class
+				)
 			);
 			KakaoTokenResponse tokenResponse = response.getBody();
 			if (tokenResponse == null || tokenResponse.accessToken() == null) {
@@ -134,11 +150,14 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 		HttpEntity<Void> request = new HttpEntity<>(headers);
 
 		try {
-			ResponseEntity<String> response = restTemplate.exchange(
-				properties.userInfoUrl(),
-				HttpMethod.GET,
-				request,
-				String.class
+			// 카카오 API 호출은 전용 스레드풀에서 실행하여 서블릿 스레드 고갈을 방지
+			ResponseEntity<String> response = executeWithKakaoBulkhead(() ->
+				restTemplate.exchange(
+					properties.userInfoUrl(),
+					HttpMethod.GET,
+					request,
+					String.class
+				)
 			);
 			String responseBody = response.getBody();
 			if (responseBody == null || responseBody.isBlank()) {
@@ -186,10 +205,13 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 
 		HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 		try {
-			ResponseEntity<String> response = restTemplate.postForEntity(
-				properties.unlinkUrl(),
-				request,
-				String.class
+			// 카카오 API 호출은 전용 스레드풀에서 실행하여 서블릿 스레드 고갈을 방지
+			ResponseEntity<String> response = executeWithKakaoBulkhead(() ->
+				restTemplate.postForEntity(
+					properties.unlinkUrl(),
+					request,
+					String.class
+				)
 			);
 			// 카카오 응답이 2xx가 아니면 실패로 처리
 			if (!response.getStatusCode().is2xxSuccessful()) {
@@ -232,9 +254,36 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 		throw translateKakaoException("kakao_unlink_failed", throwable);
 	}
 
+	private <T> T executeWithKakaoBulkhead(Supplier<T> supplier) {
+		try {
+			// 전용 스레드풀에서 실행하고 결과를 동기적으로 기다림
+			// - 호출 자체는 별도 풀에서 실행
+			// - 현재 스레드는 결과만 대기 (서블릿 풀 고갈을 전용 풀로 격리)
+			return kakaoThreadPoolBulkhead.executeSupplier(supplier)
+				.toCompletableFuture()
+				.get();
+		} catch (ExecutionException ex) {
+			// 실제 예외 원인으로 풀어서 재던짐 (RestTemplate 예외 등)
+			Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+			if (cause instanceof RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			// 체크 예외는 공통 에러로 변환
+			throw new ApiException(HttpStatus.BAD_GATEWAY, "kakao_request_failed", cause.getMessage());
+		} catch (InterruptedException ex) {
+			// 인터럽트 플래그 복구 후 서비스 불가 처리
+			Thread.currentThread().interrupt();
+			throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "kakao_request_interrupted", ex.getMessage());
+		}
+	}
+
 	private ApiException translateKakaoException(String message, Throwable throwable) {
 		if (throwable instanceof CallNotPermittedException) {
 			return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "kakao_circuit_open");
+		}
+		// 벌크헤드 큐/스레드가 꽉 찬 경우
+		if (throwable instanceof BulkheadFullException) {
+			return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "kakao_bulkhead_full");
 		}
 		if (throwable instanceof ApiException apiException) {
 			return apiException;
