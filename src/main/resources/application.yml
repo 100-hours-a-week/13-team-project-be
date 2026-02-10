@@ -71,6 +71,11 @@ resilience4j:
         slow-call-duration-threshold: 2s # 2초 이상 걸리면 느린 호출로 집계
         wait-duration-in-open-state: 10s # OPEN 유지 시간 (이후 HALF_OPEN 전환)
         permitted-number-of-calls-in-half-open-state: 3 # HALF_OPEN에서 허용할 테스트 호출 수
+  bulkhead:
+    instances:
+      kakao:
+        max-concurrent-calls: 20 # 동시 호출 제한
+        max-wait-duration: 0 # 대기 없이 즉시 실패
 
 csrf:
   cookie-domain: ${CSRF_COOKIE_DOMAIN:}
