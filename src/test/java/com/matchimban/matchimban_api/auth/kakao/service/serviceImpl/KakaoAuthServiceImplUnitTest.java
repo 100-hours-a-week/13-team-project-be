@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.matchimban.matchimban_api.auth.kakao.config.KakaoOAuthProperties;
 import com.matchimban.matchimban_api.global.error.ApiException;
 import io.github.resilience4j.bulkhead.BulkheadFullException;
-import io.github.resilience4j.bulkhead.ThreadPoolBulkhead;
-import io.github.resilience4j.bulkhead.ThreadPoolBulkheadRegistry;
+import io.github.resilience4j.bulkhead.Bulkhead;
+import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import java.time.Duration;
@@ -43,7 +43,7 @@ class KakaoAuthServiceImplUnitTest {
                 new RestTemplateBuilder(),
                 new ObjectMapper(),
                 mock(StringRedisTemplate.class),
-                ThreadPoolBulkheadRegistry.ofDefaults()
+                BulkheadRegistry.ofDefaults()
         );
     }
 
@@ -91,8 +91,8 @@ class KakaoAuthServiceImplUnitTest {
     // @Test: JUnit5 테스트 메서드 표시
     void 벌크헤드_포화는_서비스불가로_매핑된다() {
         KakaoAuthServiceImpl service = buildService();
-        // ThreadPoolBulkheadRegistry.ofDefaults()는 기본 벌크헤드 레지스트리를 생성한다.
-        ThreadPoolBulkhead bulkhead = ThreadPoolBulkheadRegistry.ofDefaults().bulkhead("kakao");
+        // BulkheadRegistry.ofDefaults()는 기본 벌크헤드 레지스트리를 생성한다.
+        Bulkhead bulkhead = BulkheadRegistry.ofDefaults().bulkhead("kakao");
         // BulkheadFullException은 벌크헤드가 꽉 찼을 때 발생하는 예외이다.
         BulkheadFullException full = BulkheadFullException.createBulkheadFullException(bulkhead);
 

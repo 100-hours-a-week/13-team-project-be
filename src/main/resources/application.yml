@@ -63,13 +63,11 @@ resilience4j:
         slow-call-duration-threshold: 2s # 2초 이상 걸리면 느린 호출로 집계
         wait-duration-in-open-state: 10s # OPEN 유지 시간 (이후 HALF_OPEN 전환)
         permitted-number-of-calls-in-half-open-state: 3 # HALF_OPEN에서 허용할 테스트 호출 수
-  thread-pool-bulkhead:
+  bulkhead:
     instances:
       kakao:
-        core-thread-pool-size: 10 # 기본 스레드 수
-        max-thread-pool-size: 20 # 폭주시 최대 스레드 수
-        queue-capacity: 20 # 대기열 크기(대기/지연 허용 범위)
-        keep-alive-duration: 20s # 추가 스레드가 놀 때 유지 시간
+        max-concurrent-calls: 20 # 동시 호출 제한
+        max-wait-duration: 0 # 대기 없이 즉시 실패
 
 csrf:
   cookie-domain: ${CSRF_COOKIE_DOMAIN:}

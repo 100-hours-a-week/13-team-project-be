@@ -5,8 +5,8 @@ import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
 import com.matchimban.matchimban_api.global.error.ApiException;
-import io.github.resilience4j.bulkhead.ThreadPoolBulkhead;
-import io.github.resilience4j.bulkhead.ThreadPoolBulkheadRegistry;
+import io.github.resilience4j.bulkhead.Bulkhead;
+import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -43,11 +43,9 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
                 "kakao.oauth.unlink-url=http://kakao.test/v1/user/unlink",
                 "kakao.oauth.client-id=test-client",
                 "kakao.oauth.redirect-uri=http://localhost/callback",
-                // 테스트에서 벌크헤드 포화를 쉽게 재현하기 위해 스레드풀을 작게 설정
-                "resilience4j.thread-pool-bulkhead.instances.kakao.core-thread-pool-size=1",
-                "resilience4j.thread-pool-bulkhead.instances.kakao.max-thread-pool-size=1",
-                "resilience4j.thread-pool-bulkhead.instances.kakao.queue-capacity=0",
-                "resilience4j.thread-pool-bulkhead.instances.kakao.keep-alive-duration=1s"
+                // 테스트에서 벌크헤드 포화를 쉽게 재현하기 위해 동시성 제한을 작게 설정
+                "resilience4j.bulkhead.instances.kakao.max-concurrent-calls=1",
+                "resilience4j.bulkhead.instances.kakao.max-wait-duration=0"
         }
 )
 class KakaoAuthServiceImplIntegrationTest {
@@ -64,7 +62,7 @@ class KakaoAuthServiceImplIntegrationTest {
     private CircuitBreakerRegistry circuitBreakerRegistry;
 
     @Autowired
-    private ThreadPoolBulkheadRegistry threadPoolBulkheadRegistry;
+    private BulkheadRegistry bulkheadRegistry;
 
     private MockRestServiceServer server;
 
@@ -152,22 +150,23 @@ class KakaoAuthServiceImplIntegrationTest {
     @Test
     // 벌크헤드가 포화되면 실제 요청이 거절되는지 확인하는 통합 테스트
     void 벌크헤드_포화시_요청이_거절된다() throws Exception {
-        ThreadPoolBulkhead bulkhead = threadPoolBulkheadRegistry.bulkhead("kakao");
+        Bulkhead bulkhead = bulkheadRegistry.bulkhead("kakao");
         // CountDownLatch는 멀티스레드 동기화 도구
         // started: 작업 시작 신호, release: 작업 종료 신호
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
 
-        // 첫 번째 호출을 벌크헤드 전용 풀에 넣고, 일부러 오래 점유시킴
-        CompletableFuture<String> blocker = bulkhead.executeSupplier(() -> {
-            started.countDown();
-            try {
-                release.await(3, TimeUnit.SECONDS);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-            }
-            return "ok";
-        }).toCompletableFuture();
+        // 첫 번째 호출로 벌크헤드 permit을 점유시키고, 일부러 오래 점유시킴
+        CompletableFuture<Void> blocker = CompletableFuture.runAsync(() ->
+                bulkhead.executeRunnable(() -> {
+                    started.countDown();
+                    try {
+                        release.await(3, TimeUnit.SECONDS);
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                    }
+                })
+        );
 
         // 첫 번째 작업이 실제로 시작될 때까지 대기
         assertThat(started.await(1, TimeUnit.SECONDS)).isTrue();
