@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.member.service.serviceImpl;
 
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
 import com.matchimban.matchimban_api.member.dto.response.MemberMeResponse;
@@ -11,6 +11,7 @@ import com.matchimban.matchimban_api.member.entity.MemberCategoryMapping;
 import com.matchimban.matchimban_api.member.entity.OAuthAccount;
 import com.matchimban.matchimban_api.member.entity.enums.MemberCategoryRelationType;
 import com.matchimban.matchimban_api.member.entity.enums.MemberStatus;
+import com.matchimban.matchimban_api.member.error.MemberErrorCode;
 import com.matchimban.matchimban_api.member.repository.MemberCategoryMappingRepository;
 import com.matchimban.matchimban_api.member.repository.MemberRepository;
 import com.matchimban.matchimban_api.member.repository.OAuthAccountRepository;
@@ -52,7 +53,7 @@ public class MemberServiceImpl implements MemberService {
 	public MemberMeResponse getMyInfo(Long memberId) {
 		// 인증된 사용자 기준으로 회원 정보를 조회한다.
 		Member member = memberRepository.findById(memberId)
-			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
+			.orElseThrow(() -> new ApiException(MemberErrorCode.UNAUTHORIZED));
 
 		// 취향/알레르기 매핑을 카테고리와 함께 조회한다.
 		List<MemberCategoryMapping> mappings = memberCategoryMappingRepository
@@ -97,11 +98,11 @@ public class MemberServiceImpl implements MemberService {
 	public void withdraw(Long memberId) {
 		// 1) 회원 존재 및 인증 확인
 		Member member = memberRepository.findById(memberId)
-			.orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "unauthorized"));
+			.orElseThrow(() -> new ApiException(MemberErrorCode.UNAUTHORIZED));
 
 		// 2) 이미 탈퇴 상태면 추가 처리 없이 종료
 		if (member.getStatus() == MemberStatus.DELETED) {
-			throw new ApiException(HttpStatus.CONFLICT, "already_withdrawn");
+			throw new ApiException(MemberErrorCode.ALREADY_WITHDRAWN);
 		}
 
 		// 3) 내부 계정 soft delete 처리

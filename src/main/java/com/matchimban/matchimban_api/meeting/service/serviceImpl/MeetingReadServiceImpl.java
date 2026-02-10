@@ -1,8 +1,16 @@
 package com.matchimban.matchimban_api.meeting.service.serviceImpl;
 
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.meeting.dto.*;
+import com.matchimban.matchimban_api.meeting.dto.InviteCodeResponse;
+import com.matchimban.matchimban_api.meeting.dto.MeetingDetailResponse;
+import com.matchimban.matchimban_api.meeting.dto.MeetingDetailStateResponse;
+import com.matchimban.matchimban_api.meeting.dto.MeetingParticipantSummary;
+import com.matchimban.matchimban_api.meeting.dto.MeetingStatus;
+import com.matchimban.matchimban_api.meeting.dto.MyMeetingSummary;
+import com.matchimban.matchimban_api.meeting.dto.MyMeetingsResponse;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
+import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.meeting.repository.projection.MeetingDetailRow;
@@ -152,11 +160,11 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 MeetingParticipant.Status.ACTIVE
         );
         if (!isActiveParticipant) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden", "not an active participant of this meeting");
+            throw new ApiException(MeetingErrorCode.NOT_ACTIVE_PARTICIPANT);
         }
 
         MeetingDetailRow row = meetingRepository.findMeetingDetailRow(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found", "meeting not found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         List<MeetingParticipantSummary> participants = meetingParticipantRepository
                 .findActiveParticipantProfiles(meetingId)
@@ -212,11 +220,11 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 meetingId, memberId, MeetingParticipant.Status.ACTIVE
         );
         if (!isActiveParticipant) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden", "not an active participant of this meeting");
+            throw new ApiException(MeetingErrorCode.NOT_ACTIVE_PARTICIPANT);
         }
 
         MeetingDetailRow row = meetingRepository.findMeetingDetailRow(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found", "meeting not found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         List<Vote> votes = voteRepository.findByMeetingIdOrderByRoundAsc(meetingId);
         Vote entryVote = resolveEntryVote(votes);
@@ -262,12 +270,12 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 meetingId, memberId, MeetingParticipant.Status.ACTIVE
         );
         if (!isActive) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden_not_active_participant");
+            throw new ApiException(MeetingErrorCode.NOT_ACTIVE_PARTICIPANT);
         }
 
         String inviteCode = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
                 .map(m -> m.getInviteCode())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         return new InviteCodeResponse(inviteCode);
     }

@@ -46,7 +46,7 @@ public class MeetingRestaurantCandidate {
     @Column(precision = 3, scale = 1)
     private BigDecimal rating;
 
-    @Column(name = "ai_score", precision = 6, scale = 5)
+    @Column(name = "ai_score", precision = 7, scale = 5)
     private BigDecimal aiScore;
 
     @Column(name = "final_rank")
