@@ -22,6 +22,7 @@ public enum AuthErrorCode implements ErrorCode {
 
     // 502/503 (외부 인증 제공자 장애)
     KAKAO_CIRCUIT_OPEN(HttpStatus.SERVICE_UNAVAILABLE, "카카오 인증이 일시적으로 불가능합니다."),
+    KAKAO_BULKHEAD_FULL(HttpStatus.SERVICE_UNAVAILABLE, "카카오 요청이 과부하 상태입니다."),
     KAKAO_TOKEN_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "카카오 토큰 요청에 실패했습니다."),
     KAKAO_USERINFO_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "카카오 사용자 정보 요청에 실패했습니다."),
     KAKAO_UNLINK_FAILED(HttpStatus.BAD_GATEWAY, "카카오 연결 해제에 실패했습니다."),

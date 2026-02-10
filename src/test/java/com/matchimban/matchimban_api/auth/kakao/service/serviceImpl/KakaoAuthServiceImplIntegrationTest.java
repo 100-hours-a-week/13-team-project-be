@@ -1,10 +1,11 @@
 package com.matchimban.matchimban_api.auth.kakao.service.serviceImpl;
 
 import com.matchimban.matchimban_api.MatchimbanApiApplication;
+import com.matchimban.matchimban_api.auth.error.AuthErrorCode;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
@@ -82,7 +83,7 @@ class KakaoAuthServiceImplIntegrationTest {
 
     @Test
     // 단위가 아니라 통합 테스트: 실제 빈 조합 + MockRestServiceServer로 외부 호출을 대체
-    void 토큰요청_성공() {
+    void tokenRequestSuccess() {
         // server.expect(...)는 "이 요청이 와야 한다"는 기대치를 설정
         server.expect(requestTo("http://kakao.test/oauth/token"))
                 .andExpect(method(HttpMethod.POST))
@@ -105,7 +106,7 @@ class KakaoAuthServiceImplIntegrationTest {
 
     @Test
     // 단위가 아니라 통합 테스트: 외부 응답을 Mock으로 주고 파싱 로직 검증
-    void 유저정보요청_성공() {
+    void userInfoRequestSuccess() {
         server.expect(requestTo("http://kakao.test/v2/user/me"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("""
@@ -130,7 +131,7 @@ class KakaoAuthServiceImplIntegrationTest {
 
     @Test
     // 실패 응답(500)이 들어오면 ApiException(502)로 매핑되는지 확인
-    void 토큰요청_실패시_배드게이트웨이_예외() {
+    void tokenRequestFailureBadGateway() {
         server.expect(requestTo("http://kakao.test/oauth/token"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withServerError());
@@ -141,7 +142,8 @@ class KakaoAuthServiceImplIntegrationTest {
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> {
                     ApiException api = (ApiException) ex;
-                    assertThat(api.getStatus().value()).isEqualTo(502);
+                    assertThat(api.getErrorCode()).isEqualTo(AuthErrorCode.KAKAO_TOKEN_REQUEST_FAILED);
+                    assertThat(api.getErrorCode().getStatus().value()).isEqualTo(502);
                 });
 
         server.verify();
@@ -149,7 +151,7 @@ class KakaoAuthServiceImplIntegrationTest {
 
     @Test
     // 벌크헤드가 포화되면 실제 요청이 거절되는지 확인하는 통합 테스트
-    void 벌크헤드_포화시_요청이_거절된다() throws Exception {
+    void bulkheadFullRejectsRequest() throws Exception {
         Bulkhead bulkhead = bulkheadRegistry.bulkhead("kakao");
         // CountDownLatch는 멀티스레드 동기화 도구
         // started: 작업 시작 신호, release: 작업 종료 신호
@@ -176,8 +178,8 @@ class KakaoAuthServiceImplIntegrationTest {
                 .isInstanceOf(ApiException.class)
                 .satisfies(ex -> {
                     ApiException api = (ApiException) ex;
-                    assertThat(api.getStatus().value()).isEqualTo(503);
-                    assertThat(api.getMessage()).isEqualTo("kakao_bulkhead_full");
+                    assertThat(api.getErrorCode()).isEqualTo(AuthErrorCode.KAKAO_BULKHEAD_FULL);
+                    assertThat(api.getErrorCode().getStatus().value()).isEqualTo(503);
                 });
 
         // 막아둔 첫 번째 작업을 종료시켜 자원 정리

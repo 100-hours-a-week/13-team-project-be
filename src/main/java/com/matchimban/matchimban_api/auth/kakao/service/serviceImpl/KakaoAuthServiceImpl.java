@@ -7,7 +7,6 @@ import com.matchimban.matchimban_api.auth.kakao.config.KakaoOAuthProperties;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoTokenResponse;
 import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
 import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
-import com.matchimban.matchimban_api.global.error.ApiException;
 import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.github.resilience4j.bulkhead.Bulkhead;
 import io.github.resilience4j.bulkhead.BulkheadRegistry;
@@ -23,7 +22,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -239,15 +237,15 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 	}
 
 	private KakaoTokenResponse requestTokenFallback(String code, Throwable throwable) {
-		throw translateKakaoException("kakao_token_request_failed", throwable);
+		throw translateKakaoException(AuthErrorCode.KAKAO_TOKEN_REQUEST_FAILED, throwable);
 	}
 
 	private KakaoUserInfo requestUserInfoFallback(String accessToken, Throwable throwable) {
-		throw translateKakaoException("kakao_userinfo_request_failed", throwable);
+		throw translateKakaoException(AuthErrorCode.KAKAO_USERINFO_REQUEST_FAILED, throwable);
 	}
 
 	private void unlinkByAdminKeyFallback(String providerMemberId, Throwable throwable) {
-		throw translateKakaoException("kakao_unlink_failed", throwable);
+		throw translateKakaoException(AuthErrorCode.KAKAO_UNLINK_FAILED, throwable);
 	}
 
 	private <T> T executeWithKakaoBulkhead(Supplier<T> supplier) {
@@ -255,17 +253,17 @@ public class KakaoAuthServiceImpl implements KakaoAuthService {
 		return kakaoBulkhead.executeSupplier(supplier);
 	}
 
-	private ApiException translateKakaoException(String message, Throwable throwable) {
+	private ApiException translateKakaoException(AuthErrorCode errorCode, Throwable throwable) {
 		if (throwable instanceof CallNotPermittedException) {
 			return new ApiException(AuthErrorCode.KAKAO_CIRCUIT_OPEN);
 		}
 		// 벌크헤드 큐/스레드가 꽉 찬 경우
 		if (throwable instanceof BulkheadFullException) {
-			return new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "kakao_bulkhead_full");
+			return new ApiException(AuthErrorCode.KAKAO_BULKHEAD_FULL);
 		}
 		if (throwable instanceof ApiException apiException) {
 			return apiException;
 		}
-		return new ApiException(AuthErrorCode.INTERNAL_SERVER_ERROR, throwable.getMessage());
+		return new ApiException(errorCode, throwable.getMessage());
 	}
 }
