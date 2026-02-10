@@ -2,18 +2,8 @@ spring:
   application:
     name: matchimban-api
 
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/matchimban}
-    username: ${DB_USERNAME:matchimban}
-    password: ${DB_PASSWORD:matchimban}
-    driver-class-name: org.postgresql.Driver
-
-#    hikari:
-#      maximum-pool-size: 50
-#      minimum-idle: 10
-#      connection-timeout: 3000
-#      idle-timeout: 600000
-#      max-lifetime: 1800000
+  profiles:
+    active: local
 
   jpa:
     hibernate:
@@ -22,36 +12,6 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-
-kakao:
-  oauth:
-    authorize-url: ${KAKAO_AUTHORIZE_URL:https://kauth.kakao.com/oauth/authorize}
-    token-url: ${KAKAO_TOKEN_URL:https://kauth.kakao.com/oauth/token}
-    user-info-url: ${KAKAO_USER_INFO_URL:https://kapi.kakao.com/v2/user/me}
-    unlink-url: ${KAKAO_UNLINK_URL:https://kapi.kakao.com/v1/user/unlink}
-    client-id: ${KAKAO_CLIENT_ID:}
-    client-secret: ${KAKAO_CLIENT_SECRET:}
-    redirect-uri: ${KAKAO_REDIRECT_URI:}
-    frontend-redirect-url: ${KAKAO_FRONTEND_REDIRECT_URL:/}
-    admin-key: ${KAKAO_ADMIN_KEY:}
-    connect-timeout: ${KAKAO_CONNECT_TIMEOUT:2s}
-    read-timeout: ${KAKAO_READ_TIMEOUT:3s}
-
-jwt:
-  secret: ${JWT_SECRET:}
-  issuer: ${JWT_ISSUER:matchimban}
-  access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:60}
-  cookie-name: ${JWT_COOKIE_NAME:access_token}
-  refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refresh_token}
-  refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:7}
-  cookie-secure: ${JWT_COOKIE_SECURE:false}
-  cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
 
 management:
   endpoints:
@@ -63,31 +23,19 @@ resilience4j:
   circuitbreaker:
     instances:
       kakao:
-        sliding-window-type: COUNT_BASED # 호출 수 기준으로 실패율 집계
-        sliding-window-size: 20 # 최근 20건 호출을 기준으로 계산
-        minimum-number-of-calls: 10 # 최소 10건부터 실패율/슬로우콜 비율 계산
-        failure-rate-threshold: 50 # 실패율 50% 이상이면 OPEN
-        slow-call-rate-threshold: 50 # 느린 호출 비율이 50% 이상이면 OPEN
-        slow-call-duration-threshold: 2s # 2초 이상 걸리면 느린 호출로 집계
-        wait-duration-in-open-state: 10s # OPEN 유지 시간 (이후 HALF_OPEN 전환)
-        permitted-number-of-calls-in-half-open-state: 3 # HALF_OPEN에서 허용할 테스트 호출 수
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
   bulkhead:
     instances:
       kakao:
-        max-concurrent-calls: 20 # 동시 호출 제한
-        max-wait-duration: 0 # 대기 없이 즉시 실패
-
-csrf:
-  cookie-domain: ${CSRF_COOKIE_DOMAIN:}
+        max-concurrent-calls: 20
+        max-wait-duration: 0
 
 ai-recommendation:
-  base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000/api/v1}
   timeout-ms: 5000
-
-#server:
-#  tomcat:
-#    threads:
-#      max: 500       # 동시에 일할 수 있는 최대 쓰레드 수 (기본 200)
-#      min-spare: 50  # 항상 최소한으로 유지할 쓰레드 수 (기본 10)
-#    accept-count: 200 # 쓰레드가 꽉 찼을 때 대기할 수 있는 큐의 크기
-#    max-connections: 8192 # 서버가 동시에 유지할 수 있는 최대 연결 수

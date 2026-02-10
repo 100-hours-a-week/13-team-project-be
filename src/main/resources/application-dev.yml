@@ -1,6 +1,6 @@
 spring:
   config:
-    import: "optional:aws-parameterstore:/moyeobab/spring/prod/"
+    import: "optional:aws-parameterstore:/moyeobab/spring/dev/"
   cloud:
     aws:
       region:
