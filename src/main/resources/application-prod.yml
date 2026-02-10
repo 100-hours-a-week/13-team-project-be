@@ -1,0 +1,55 @@
+spring:
+  config:
+    import: "optional:aws-parameterstore:/moyeobab/spring/prod/"
+  cloud:
+    aws:
+      region:
+        static: ap-northeast-2
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+
+kakao:
+  oauth:
+    authorize-url: ${KAKAO_AUTHORIZE_URL}
+    token-url: ${KAKAO_TOKEN_URL}
+    user-info-url: ${KAKAO_USER_INFO_URL}
+    unlink-url: ${KAKAO_UNLINK_URL}
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET}
+    redirect-uri: ${KAKAO_REDIRECT_URI}
+    frontend-redirect-url: ${KAKAO_FRONTEND_REDIRECT_URL}
+    admin-key: ${KAKAO_ADMIN_KEY}
+    connect-timeout: ${KAKAO_CONNECT_TIMEOUT}
+    read-timeout: ${KAKAO_READ_TIMEOUT}
+
+jwt:
+  secret: ${JWT_SECRET}
+  issuer: ${JWT_ISSUER}
+  access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES}
+  cookie-name: ${JWT_COOKIE_NAME}
+  refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME}
+  refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS}
+  cookie-secure: ${JWT_COOKIE_SECURE}
+  cookie-same-site: ${JWT_COOKIE_SAME_SITE}
+
+csrf:
+  cookie-domain: ${CSRF_COOKIE_DOMAIN}
+
+ai-recommendation:
+  base-url: ${AI_RECOMMENDATION_BASE_URL}
+  timeout-ms: 5000
+
+logging:
+  level:
+    io.awspring.cloud: DEBUG
+    software.amazon.awssdk: DEBUG
+    software.amazon.awssdk.auth: TRACE
