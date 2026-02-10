@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
@@ -16,6 +16,7 @@ import com.matchimban.matchimban_api.vote.ai.dto.AiRecommendationRequest;
 import com.matchimban.matchimban_api.vote.ai.dto.AiRecommendationResponse;
 import com.matchimban.matchimban_api.vote.entity.MeetingRestaurantCandidate;
 import com.matchimban.matchimban_api.vote.entity.Vote;
+import com.matchimban.matchimban_api.vote.error.VoteErrorCode;
 import com.matchimban.matchimban_api.vote.repository.MeetingRestaurantCandidateRepository;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import com.matchimban.matchimban_api.vote.service.VoteCandidateAsyncService;
@@ -30,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -66,11 +66,11 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
             Vote v2 = voteRepository.findById(round2VoteId).orElseThrow();
 
             Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
-                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found"));
+                    .orElseThrow(() -> new ApiException(VoteErrorCode.NO_RESTAURANTS_FOUND, "meeting_not_found"));
 
             List<Long> memberIds = meetingParticipantRepository.findActiveMemberIds(meetingId);
             if (memberIds.isEmpty()) {
-                throw new ApiException(HttpStatus.CONFLICT, "vote_create_not_ready_headcount", "no_active_participants");
+                throw new ApiException(VoteErrorCode.VOTE_CREATE_NOT_READY_HEADCOUNT, "no_active_participants");
             }
 
             var categories = foodCategoryRepository.findByCategoryType(CATEGORY);
@@ -126,15 +126,14 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
 
             AiRecommendationResponse res = recommendationClient.recommend(req);
             if (res == null || res.getRestaurants() == null || res.getRestaurants().isEmpty()) {
-                throw new ApiException(HttpStatus.NOT_FOUND, "no_restaurants_found");
+                throw new ApiException(VoteErrorCode.NO_RESTAURANTS_FOUND);
             }
 
             int expected = meeting.getSwipeCount() * 2;
             int actual = res.getRestaurants().size();
             if (actual != expected) {
                 throw new ApiException(
-                        HttpStatus.BAD_GATEWAY,
-                        "recommendation_failed",
+                        VoteErrorCode.AI_RESPONSE_INVALID,
                         "expected=" + expected + ", actual=" + actual
                 );
             }
@@ -153,15 +152,13 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
 
             if (savedR1 != half) {
                 throw new ApiException(
-                        HttpStatus.NOT_FOUND,
-                        "no_restaurants_found",
+                        VoteErrorCode.AI_RESPONSE_INVALID,
                         "savedR1=" + savedR1 + ", expectedHalf=" + half
                 );
             }
             if (savedR2 != half) {
                 throw new ApiException(
-                        HttpStatus.NOT_FOUND,
-                        "no_restaurants_found",
+                        VoteErrorCode.AI_RESPONSE_INVALID,
                         "savedR2=" + savedR2 + ", expectedHalf=" + half
                 );
             }
@@ -175,7 +172,7 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
         } catch (ApiException e) {
             LOG.error("Vote candidate generation failed(ApiException). meetingId={}, vote1={}, vote2={}, status={}, message={}, detail={}",
                     meetingId, round1VoteId, round2VoteId,
-                    e.getStatus(), e.getMessage(), e.getDetail(), e);
+                    e.getErrorCode().getCode(), e.getErrorCode().getMessage(), e.getData(), e);
 
             voteFailureService.markVotesFailed(round1VoteId, round2VoteId);
 

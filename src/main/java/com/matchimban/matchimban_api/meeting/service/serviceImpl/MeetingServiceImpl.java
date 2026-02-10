@@ -1,12 +1,14 @@
 package com.matchimban.matchimban_api.meeting.service.serviceImpl;
 
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
+import com.matchimban.matchimban_api.global.error.code.CommonErrorCode;
 import com.matchimban.matchimban_api.meeting.dto.CreateMeetingRequest;
 import com.matchimban.matchimban_api.meeting.dto.CreateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.dto.UpdateMeetingRequest;
 import com.matchimban.matchimban_api.meeting.dto.UpdateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
+import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.meeting.service.MeetingService;
@@ -87,21 +89,21 @@ public class MeetingServiceImpl implements MeetingService {
 
             } catch (DataIntegrityViolationException e) {
                 if (attempt == inviteCodeRetry) {
-                    throw new ApiException(HttpStatus.CONFLICT, "invite_code_conflict", e.getMessage());
+                    throw new ApiException(MeetingErrorCode.INVITE_CODE_CONFLICT);
                 }
             }
         }
 
-        throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "internal_server_error");
+        throw new ApiException(CommonErrorCode.INTERNAL_SERVER_ERROR);
     }
 
     @Transactional
     public UpdateMeetingResponse updateMeeting(Long memberId, Long meetingId, UpdateMeetingRequest req) {
         Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found", "meeting not found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         if (!meeting.getHostMemberId().equals(memberId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden", "only host can update meeting");
+            throw new ApiException(MeetingErrorCode.ONLY_HOST_ALLOWED);
         }
 
         validateUpdateNotAllowedAfterVoteCreated(meetingId);
@@ -151,10 +153,10 @@ public class MeetingServiceImpl implements MeetingService {
     @Transactional
     public void deleteMeeting(Long memberId, Long meetingId) {
         Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "meeting_not_found", "meeting not found"));
+                .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         if (!meeting.getHostMemberId().equals(memberId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "forbidden", "only host can delete meeting");
+            throw new ApiException(MeetingErrorCode.ONLY_HOST_ALLOWED);
         }
 
         meeting.delete();
@@ -176,13 +178,11 @@ public class MeetingServiceImpl implements MeetingService {
         Instant now = Instant.now();
 
         if (scheduledAt.isBefore(now)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request",
-                    "scheduled_at must not be in the past");
+            throw new ApiException(MeetingErrorCode.INVALID_MEETING_TIME);
         }
 
         if (voteDeadlineAt.isBefore(now) || voteDeadlineAt.isAfter(scheduledAt)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "invalid_request",
-                    "vote_deadline_at must be between now and scheduled_at");
+            throw new ApiException(MeetingErrorCode.INVALID_MEETING_TIME);
         }
     }
 
@@ -191,11 +191,7 @@ public class MeetingServiceImpl implements MeetingService {
                 voteRepository.existsByMeetingIdAndStatusNot(meetingId, VoteStatus.FAILED);
 
         if (hasNonFailedVote) {
-            throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "meeting_update_not_allowed",
-                    "cannot update meeting after vote has been created"
-            );
+            throw new ApiException(MeetingErrorCode.MEETING_UPDATE_NOT_ALLOWED);
         }
     }
 

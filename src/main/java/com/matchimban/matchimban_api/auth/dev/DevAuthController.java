@@ -1,8 +1,9 @@
 package com.matchimban.matchimban_api.auth.dev;
 
+import com.matchimban.matchimban_api.auth.error.AuthErrorCode;
 import com.matchimban.matchimban_api.auth.jwt.JwtTokenProvider;
 import com.matchimban.matchimban_api.global.dto.ApiResult;
-import com.matchimban.matchimban_api.global.error.ApiException;
+import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.member.dto.MemberCreateRequest;
 import com.matchimban.matchimban_api.member.dto.OAuthAccountCreateRequest;
 import com.matchimban.matchimban_api.member.entity.Member;
@@ -24,7 +25,6 @@ import com.matchimban.matchimban_api.member.repository.FoodCategoryRepository;
 import com.matchimban.matchimban_api.member.repository.PolicyRepository;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -125,10 +125,10 @@ public class DevAuthController {
 	public ResponseEntity<ApiResult<DevAccessData>> issueAccessTokenByMemberId(@PathVariable Long memberId) {
 		// memberId로 토큰을 발급하는 기능은 개발 계정에만 허용.
 		OAuthAccount account = oauthAccountRepository.findByMemberId(memberId)
-			.orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "member_not_found"));
+			.orElseThrow(() -> new ApiException(AuthErrorCode.UNAUTHORIZED, "member_not_found"));
 
 		if (!isDevAccount(account)) {
-			throw new ApiException(HttpStatus.FORBIDDEN, "dev_account_required");
+			throw new ApiException(AuthErrorCode.DEV_ACCOUNT_REQUIRED);
 		}
 
 		Member member = account.getMember();
