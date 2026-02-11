@@ -87,6 +87,15 @@ ai-recommendation:
   base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000/api/v1}
   timeout-ms: 5000
 
+perf-log:
+  enabled: ${PERF_LOG_ENABLED:true}
+  slow-request-ms: ${PERF_LOG_SLOW_REQUEST_MS:500}
+  slow-query-ms: ${PERF_LOG_SLOW_QUERY_MS:200}
+  exclude-path-prefixes:
+    - /actuator
+    - /swagger-ui
+    - /v3/api-docs
+
 #server:
 #  tomcat:
 #    threads:
