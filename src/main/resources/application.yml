@@ -29,6 +29,9 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
 
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+
 kakao:
   oauth:
     authorize-url: ${KAKAO_AUTHORIZE_URL:https://kauth.kakao.com/oauth/authorize}
