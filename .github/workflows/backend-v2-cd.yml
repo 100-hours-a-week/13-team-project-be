@@ -80,8 +80,8 @@ jobs:
               "cd ${COMPOSE_DIR} && docker compose pull && docker compose up -d",
               "",
               "# Health check (Spring Boot start_period 고려하여 대기)",
-              "sleep 15",
-              "if curl -sf --retry 10 --retry-delay 5 http://localhost:8080/actuator/health; then",
+              "sleep 30",
+              "if curl -sf --retry 10 --retry-delay 5 --retry-all-errors http://localhost:8080/actuator/health; then",
               "  echo \"Health check passed\"",
               "  docker image prune -f",
               "  exit 0",
@@ -93,8 +93,8 @@ jobs:
               "  PREV_TAG=${PREV_IMAGE##*:}",
               "  sed -i \"s/IMAGE_TAG=.*/IMAGE_TAG=${PREV_TAG}/\" ${COMPOSE_DIR}/.env",
               "  cd ${COMPOSE_DIR} && docker compose up -d",
-              "  sleep 15",
-              "  curl -sf --retry 5 --retry-delay 3 http://localhost:8080/actuator/health && echo \"Rollback succeeded\" || echo \"Rollback also failed\"",
+              "  sleep 30",
+              "  curl -sf --retry 5 --retry-delay 3 --retry-all-errors http://localhost:8080/actuator/health && echo \"Rollback succeeded\" || echo \"Rollback also failed\"",
               "fi",
               "exit 1"
             ]' \
