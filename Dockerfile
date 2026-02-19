@@ -30,21 +30,22 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # [보안] 루트가 아닌 전용 사용자로 실행
+# su-exec: 컨테이너 초기화(root) 후 appuser로 권한 드롭용 (gosu의 Alpine 경량 대안)
 RUN addgroup -S appgroup && \
-    adduser -S appuser -G appgroup
+    adduser -S appuser -G appgroup && \
+    apk add --no-cache su-exec
 
 # 빌드 스테이지에서 JAR만 복사
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# 소유권 변경 후 사용자 전환
+# 소유권 변경
 RUN chown appuser:appgroup app.jar
-
-USER appuser
 
 EXPOSE 8080
 
-# JVM 튜닝: 컨테이너 메모리 인식 활성화
-ENTRYPOINT ["java", \
-    "-XX:+UseContainerSupport", \
-    "-XX:MaxRAMPercentage=75.0", \
-    "-jar", "app.jar"]
+# 컨테이너 초기화(root) → 권한 드롭(appuser) → 앱 실행
+# Docker가 마운트하는 /etc/hosts, /etc/resolv.conf는 640 권한으로 생성되어
+# 비root 사용자가 읽을 수 없음 → chmod로 읽기 허용 후 su-exec으로 appuser 전환
+ENTRYPOINT ["sh", "-c", \
+    "chmod 644 /etc/hosts /etc/resolv.conf && \
+     exec su-exec appuser java -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -jar app.jar"]

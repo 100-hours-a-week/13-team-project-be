@@ -10,6 +10,8 @@ services:
     env_file: .env
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+    dns:
+      - 10.1.0.2
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
