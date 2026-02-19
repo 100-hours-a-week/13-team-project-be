@@ -45,10 +45,13 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
+	implementation 'net.ttddyy:datasource-proxy:1.10.1'
 	implementation "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"
 	implementation "io.github.resilience4j:resilience4j-circuitbreaker:${resilience4jVersion}"
 	implementation "io.github.resilience4j:resilience4j-annotations:${resilience4jVersion}"
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'org.postgresql:postgresql'
