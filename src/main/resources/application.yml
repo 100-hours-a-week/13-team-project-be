@@ -13,6 +13,9 @@ spring:
       hibernate:
         format_sql: true
 
+flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+
 management:
   endpoints:
     web:
@@ -39,3 +42,20 @@ resilience4j:
 
 ai-recommendation:
   timeout-ms: 5000
+
+perf-log:
+  enabled: ${PERF_LOG_ENABLED:true}
+  slow-request-ms: ${PERF_LOG_SLOW_REQUEST_MS:500}
+  slow-query-ms: ${PERF_LOG_SLOW_QUERY_MS:200}
+  exclude-path-prefixes:
+    - /actuator
+    - /swagger-ui
+    - /v3/api-docs
+
+#server:
+#  tomcat:
+#    threads:
+#      max: 500       # 동시에 일할 수 있는 최대 쓰레드 수 (기본 200)
+#      min-spare: 50  # 항상 최소한으로 유지할 쓰레드 수 (기본 10)
+#    accept-count: 200 # 쓰레드가 꽉 찼을 때 대기할 수 있는 큐의 크기
+#    max-connections: 8192 # 서버가 동시에 유지할 수 있는 최대 연결 수

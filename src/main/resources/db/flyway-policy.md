@@ -1,0 +1,6 @@
+- Flyway migrate는 배포 파이프라인에서 1회 실행 (앱 기동 자동 실행 X)
+- 마이그레이션은 Backward-compatible 원칙(Expand→Contract)
+- 기존 DB는 dev/prod 각각 baseline 1회
+- baseline 이후는 V2__...부터 migration 파일로만 관리
+- prod 적용은 dev 검증 후 진행
+- (추후) DDL/DML 계정 분리 고려

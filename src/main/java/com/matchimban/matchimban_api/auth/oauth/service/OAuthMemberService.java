@@ -1,7 +1,7 @@
-package com.matchimban.matchimban_api.auth.kakao.service.serviceImpl;
+package com.matchimban.matchimban_api.auth.oauth.service;
 
-import com.matchimban.matchimban_api.auth.kakao.dto.KakaoUserInfo;
-import com.matchimban.matchimban_api.auth.kakao.service.KakaoMemberService;
+import com.matchimban.matchimban_api.auth.oauth.model.OAuthProviderType;
+import com.matchimban.matchimban_api.auth.oauth.model.OAuthUserInfo;
 import com.matchimban.matchimban_api.member.dto.MemberCreateRequest;
 import com.matchimban.matchimban_api.member.dto.OAuthAccountCreateRequest;
 import com.matchimban.matchimban_api.member.entity.Member;
@@ -14,15 +14,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class KakaoMemberServiceImpl implements KakaoMemberService {
-	private static final String PROVIDER_KAKAO = "KAKAO";
+public class OAuthMemberService {
 
 	private final MemberRepository memberRepository;
 	private final OAuthAccountRepository oauthAccountRepository;
 	private final MemberMapper memberMapper;
 	private final OAuthAccountMapper oauthAccountMapper;
 
-	public KakaoMemberServiceImpl(
+	public OAuthMemberService(
 		MemberRepository memberRepository,
 		OAuthAccountRepository oauthAccountRepository,
 		MemberMapper memberMapper,
@@ -34,18 +33,15 @@ public class KakaoMemberServiceImpl implements KakaoMemberService {
 		this.oauthAccountMapper = oauthAccountMapper;
 	}
 
-	@Override
 	@Transactional
-	public Member findOrCreateMember(KakaoUserInfo userInfo) {
-		String providerMemberId = String.valueOf(userInfo.id());
-
+	public Member findOrCreateMember(OAuthProviderType providerType, OAuthUserInfo userInfo) {
 		return oauthAccountRepository
-			.findByProviderAndProviderMemberId(PROVIDER_KAKAO, providerMemberId)
+			.findByProviderAndProviderMemberId(providerType.provider(), userInfo.providerMemberId())
 			.map(OAuthAccount::getMember)
-			.orElseGet(() -> createMemberWithAccount(userInfo, providerMemberId));
+			.orElseGet(() -> createMemberWithAccount(providerType, userInfo));
 	}
 
-	private Member createMemberWithAccount(KakaoUserInfo userInfo, String providerMemberId) {
+	private Member createMemberWithAccount(OAuthProviderType providerType, OAuthUserInfo userInfo) {
 		MemberCreateRequest memberRequest = new MemberCreateRequest(
 			userInfo.nickname(),
 			userInfo.profileImageUrl(),
@@ -55,8 +51,8 @@ public class KakaoMemberServiceImpl implements KakaoMemberService {
 		memberRepository.save(member);
 
 		OAuthAccountCreateRequest accountRequest = new OAuthAccountCreateRequest(
-			PROVIDER_KAKAO,
-			providerMemberId,
+			providerType.provider(),
+			userInfo.providerMemberId(),
 			member
 		);
 		OAuthAccount account = oauthAccountMapper.toOAuthAccount(accountRequest);
@@ -64,3 +60,4 @@ public class KakaoMemberServiceImpl implements KakaoMemberService {
 		return member;
 	}
 }
+

@@ -2,7 +2,8 @@ package com.matchimban.matchimban_api.member.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.auth.jwt.RefreshTokenService;
-import com.matchimban.matchimban_api.auth.kakao.service.KakaoAuthService;
+import com.matchimban.matchimban_api.auth.oauth.model.OAuthProviderType;
+import com.matchimban.matchimban_api.auth.oauth.provider.OAuthProviderRegistry;
 import com.matchimban.matchimban_api.member.dto.response.MemberMeResponse;
 import com.matchimban.matchimban_api.member.dto.response.MemberPreferencesResponse;
 import com.matchimban.matchimban_api.member.dto.response.PreferenceItemResponse;
@@ -26,25 +27,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class MemberServiceImpl implements MemberService {
-	private static final String PROVIDER_KAKAO = "KAKAO";
-
 	private final MemberRepository memberRepository;
 	private final MemberCategoryMappingRepository memberCategoryMappingRepository;
 	private final OAuthAccountRepository oauthAccountRepository;
-	private final KakaoAuthService kakaoAuthService;
+	private final OAuthProviderRegistry oauthProviderRegistry;
 	private final RefreshTokenService refreshTokenService;
 
 	public MemberServiceImpl(
 		MemberRepository memberRepository,
 		MemberCategoryMappingRepository memberCategoryMappingRepository,
 		OAuthAccountRepository oauthAccountRepository,
-		KakaoAuthService kakaoAuthService,
+		OAuthProviderRegistry oauthProviderRegistry,
 		RefreshTokenService refreshTokenService
 	) {
 		this.memberRepository = memberRepository;
 		this.memberCategoryMappingRepository = memberCategoryMappingRepository;
 		this.oauthAccountRepository = oauthAccountRepository;
-		this.kakaoAuthService = kakaoAuthService;
+		this.oauthProviderRegistry = oauthProviderRegistry;
 		this.refreshTokenService = refreshTokenService;
 	}
 
@@ -110,11 +109,15 @@ public class MemberServiceImpl implements MemberService {
 		// 4) 모든 refresh 세션 폐기 (모든 기기 강제 로그아웃)
 		refreshTokenService.revokeAll(memberId);
 
-		// 5) 카카오 연결 해제 (provider에 따라 unlink)
+		// 5) 외부 OAuth Provider 연결 해제 (provider에 따라 unlink)
 		OAuthAccount account = oauthAccountRepository.findByMemberId(memberId).orElse(null);
 		if (account != null) {
-			if (PROVIDER_KAKAO.equalsIgnoreCase(account.getProvider())) {
-				kakaoAuthService.unlinkByAdminKey(account.getProviderMemberId());
+			try {
+				OAuthProviderType providerType = OAuthProviderType.fromProvider(account.getProvider());
+				oauthProviderRegistry.find(providerType)
+					.ifPresent(provider -> provider.unlink(account.getProviderMemberId()));
+			} catch (IllegalArgumentException ex) {
+				// 알 수 없는 provider면 외부 unlink는 스킵하고, 내부 연동 정보만 정리한다.
 			}
 			// 재로그인 시 새 계정 생성되도록 연결 계정도 삭제
 			oauthAccountRepository.delete(account);
