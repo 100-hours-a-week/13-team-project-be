@@ -1,7 +1,7 @@
 package com.matchimban.matchimban_api.meeting.service.serviceImpl;
 
+import com.matchimban.matchimban_api.chat.service.ChatSystemMessageService;
 import com.matchimban.matchimban_api.global.error.api.ApiException;
-import com.matchimban.matchimban_api.meeting.dto.MeetingParticipantSummary;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingRequest;
 import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
@@ -15,7 +15,6 @@ import com.matchimban.matchimban_api.vote.entity.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +25,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
     private final MeetingRepository meetingRepository;
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final VoteRepository voteRepository;
+    private final ChatSystemMessageService chatSystemMessageService;
     private final EntityManager entityManager;
 
     @Transactional
@@ -54,6 +54,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
 
         if (existing != null) {
             existing.reactivate();
+            chatSystemMessageService.publishSystemMessage(existing, buildJoinSystemMessage(existing.getMember().getNickname()));
             return new ParticipateMeetingResponse(meetingId);
         }
 
@@ -67,6 +68,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
                 .build();
 
         meetingParticipantRepository.save(participant);
+        chatSystemMessageService.publishSystemMessage(participant, buildJoinSystemMessage(memberRef.getNickname()));
         return new ParticipateMeetingResponse(meetingId);
     }
 
@@ -89,6 +91,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
         validateLeaveAllowedByVoteState(meetingId);
 
         participant.leave();
+        chatSystemMessageService.publishSystemMessage(participant, buildLeaveSystemMessage(participant.getMember().getNickname()));
     }
 
     private void validateLeaveAllowedByVoteState(Long meetingId) {
@@ -101,5 +104,20 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
                         throw new ApiException(MeetingErrorCode.VOTE_IN_PROGRESS);
                     }
                 });
+    }
+
+    private String buildJoinSystemMessage(String nickname) {
+        return safeNickname(nickname) + "님이 들어왔습니다.";
+    }
+
+    private String buildLeaveSystemMessage(String nickname) {
+        return safeNickname(nickname) + "님이 나갔습니다.";
+    }
+
+    private String safeNickname(String nickname) {
+        if (nickname == null || nickname.isBlank()) {
+            return "사용자";
+        }
+        return nickname;
     }
 }

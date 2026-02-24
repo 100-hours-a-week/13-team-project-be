@@ -8,6 +8,8 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+  flyway:
+    enabled: false
 
 jwt:
   secret: "test-jwt-secret-key-32bytes-minimum!!"
