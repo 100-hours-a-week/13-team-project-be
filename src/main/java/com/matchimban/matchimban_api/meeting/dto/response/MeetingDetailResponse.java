@@ -62,6 +62,9 @@ public class MeetingDetailResponse {
     @Schema(description = "현재 참여자 수(ACTIVE 기준)")
     private long participantCount;
 
+    @Schema(description = "내가 읽지 않은 채팅 메시지 수 (SYSTEM/내 메시지 제외)")
+    private long chatUnreadCount;
+
     @Schema(description = "참여자 목록")
     private List<MeetingParticipantSummary> participants;
 

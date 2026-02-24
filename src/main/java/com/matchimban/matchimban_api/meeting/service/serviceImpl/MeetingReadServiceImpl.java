@@ -1,6 +1,8 @@
 package com.matchimban.matchimban_api.meeting.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.api.ApiException;
+import com.matchimban.matchimban_api.chat.entity.ChatMessageType;
+import com.matchimban.matchimban_api.chat.repository.ChatMessageRepository;
 import com.matchimban.matchimban_api.meeting.dto.*;
 import com.matchimban.matchimban_api.meeting.dto.InviteCodeResponse;
 import com.matchimban.matchimban_api.meeting.dto.MeetingDetailResponse;
@@ -41,6 +43,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
 
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final MeetingRepository meetingRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final VoteRepository voteRepository;
     private final VoteSubmissionRepository voteSubmissionRepository;
 
@@ -186,6 +189,13 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         boolean hasVotedCurrent = (currentVoteId != null)
                 && voteSubmissionRepository.existsByVoteIdAndParticipantMemberId(currentVoteId, memberId);
 
+        long chatUnreadCount = chatMessageRepository.countUnreadForMeetingBadge(
+                meetingId,
+                memberId,
+                MeetingParticipant.Status.ACTIVE,
+                ChatMessageType.SYSTEM
+        );
+
         return new MeetingDetailResponse(
                 row.getMeetingId(),
                 row.getTitle(),
@@ -203,6 +213,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 row.getInviteCode(),
                 row.getHostMemberId(),
                 row.getParticipantCount(),
+                chatUnreadCount,
                 participants,
                 currentVoteId,
                 voteState,
