@@ -1,4 +1,8 @@
 spring:
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
   datasource:
     url: jdbc:h2:mem:testdb;MODE=PostgreSQL
     username: sa
