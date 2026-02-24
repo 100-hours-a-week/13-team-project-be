@@ -31,3 +31,8 @@ jwt:
 ai-recommendation:
   base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000/api/v1}
   timeout-ms: 5000
+
+chat:
+  redis:
+    listener:
+      enabled: false
