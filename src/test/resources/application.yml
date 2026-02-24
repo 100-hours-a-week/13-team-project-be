@@ -3,6 +3,8 @@ spring:
     aws:
       parameterstore:
         enabled: false
+  flyway:
+    enabled: false
   datasource:
     url: jdbc:h2:mem:testdb;MODE=PostgreSQL
     username: sa
