@@ -3,6 +3,7 @@ package com.matchimban.matchimban_api.meeting.repository;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.repository.projection.MeetingDetailRow;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -55,4 +56,16 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
           and m.isDeleted = false
     """)
     Optional<MeetingDetailRow> findMeetingDetailRow(@Param("meetingId") Long meetingId);
+
+    @Modifying
+    @Query(value = """
+        update meetings
+           set last_chat_id = GREATEST(COALESCE(last_chat_id, 0), :chatMessageId)
+         where id = :meetingId
+           and is_deleted = false
+    """, nativeQuery = true)
+    int updateLastChatIdIfGreater(
+            @Param("meetingId") Long meetingId,
+            @Param("chatMessageId") Long chatMessageId
+    );
 }

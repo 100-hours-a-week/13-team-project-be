@@ -56,6 +56,14 @@ perf-log:
     - /swagger-ui
     - /v3/api-docs
 
+chat:
+  unread:
+    window-size: ${CHAT_UNREAD_WINDOW_SIZE:150}
+  redis:
+    channel:
+      message-created: ${CHAT_REDIS_CHANNEL_MESSAGE_CREATED:chat:meeting:message-created}
+      unread-counts-updated: ${CHAT_REDIS_CHANNEL_UNREAD_COUNTS_UPDATED:chat:meeting:unread-counts-updated}
+
 #server:
 #  tomcat:
 #    threads:

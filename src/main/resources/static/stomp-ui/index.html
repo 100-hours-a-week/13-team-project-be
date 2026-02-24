@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STOMP Test UI</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --line: #d1d5db;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #1d4ed8;
+      --danger: #b91c1c;
+      --ok: #047857;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Pretendard", "Noto Sans KR", sans-serif;
+    }
+
+    .layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+    }
+
+    .row {
+      margin-bottom: 10px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input, select, textarea, button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 14px;
+      background: #fff;
+      color: #111827;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #fff;
+      border-color: var(--line);
+      color: #1f2937;
+      cursor: pointer;
+    }
+
+    button.danger {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.ghost {
+      background: #fff;
+      border-color: var(--line);
+      color: #374151;
+      cursor: pointer;
+    }
+
+    .status {
+      margin-bottom: 10px;
+      font-size: 13px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #eef2ff;
+      color: #312e81;
+      border: 1px solid #c7d2fe;
+    }
+
+    .status.ok {
+      background: #ecfdf5;
+      color: #065f46;
+      border-color: #a7f3d0;
+    }
+
+    .status.err {
+      background: #fef2f2;
+      color: #7f1d1d;
+      border-color: #fecaca;
+    }
+
+    .log {
+      height: 640px;
+      overflow: auto;
+      background: #0b1220;
+      color: #d1d5db;
+      border-radius: 10px;
+      border: 1px solid #1f2937;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .log {
+        height: 420px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <div class="card">
+    <h1>STOMP Test UI</h1>
+    <div id="status" class="status">연결 전</div>
+
+    <h2>연결</h2>
+    <div class="row">
+      <label for="wsUrl">WebSocket URL</label>
+      <input id="wsUrl" type="text">
+    </div>
+    <div class="row">
+      <label for="meetingId">Meeting ID</label>
+      <input id="meetingId" type="text" value="10">
+    </div>
+    <div class="actions">
+      <button id="connectBtn" class="primary">Connect</button>
+      <button id="disconnectBtn" class="danger">Disconnect</button>
+    </div>
+
+    <h2 style="margin-top:16px;">메시지 전송</h2>
+    <div class="row">
+      <label for="type">type</label>
+      <select id="type">
+        <option value="TEXT">TEXT</option>
+        <option value="IMAGE">IMAGE</option>
+      </select>
+    </div>
+    <div class="row">
+      <label for="clientMessageId">client_message_id (선택)</label>
+      <input id="clientMessageId" type="text" placeholder="uuid or empty">
+    </div>
+    <div class="row">
+      <label for="content">content</label>
+      <textarea id="content">테스트 메시지입니다.</textarea>
+    </div>
+    <div class="actions">
+      <button id="sendMessageBtn" class="secondary">SEND /messages</button>
+      <button id="heartbeatBtn" class="ghost">SEND /heartbeat</button>
+    </div>
+
+    <div class="hint">로그인 후(access_token 쿠키 존재) 테스트하세요.</div>
+    <div class="hint">구독: messages topic + user ack/error/heartbeat queue</div>
+  </div>
+
+  <div class="card">
+    <h2>실시간 로그</h2>
+    <div id="log" class="log"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@stomp/stompjs@7.2.0/bundles/stomp.umd.min.js"></script>
+<script>
+  const statusEl = document.getElementById('status');
+  const logEl = document.getElementById('log');
+  const wsUrlEl = document.getElementById('wsUrl');
+  const meetingIdEl = document.getElementById('meetingId');
+  const typeEl = document.getElementById('type');
+  const clientMessageIdEl = document.getElementById('clientMessageId');
+  const contentEl = document.getElementById('content');
+
+  const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
+  wsUrlEl.value = `${wsProtocol}://${location.host}/api/v2/ws`;
+
+  let client = null;
+  let subs = [];
+
+  function now() {
+    return new Date().toISOString();
+  }
+
+  function setStatus(text, type = '') {
+    statusEl.className = `status ${type}`.trim();
+    statusEl.textContent = text;
+  }
+
+  function appendLog(title, payload) {
+    const line = `[${now()}] ${title}\n${typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2)}\n`;
+    logEl.textContent += line + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function buildMessageBody() {
+    const rawId = clientMessageIdEl.value.trim();
+    return {
+      ...(rawId ? { client_message_id: rawId } : {}),
+      type: typeEl.value,
+      content: contentEl.value
+    };
+  }
+
+  function subscribeAll(meetingId) {
+    const topic = `/api/v2/topic/meetings/${meetingId}/messages`;
+    subs.push(client.subscribe(topic, frame => appendLog(`RECV ${topic}`, JSON.parse(frame.body))));
+
+    const ack = '/user/queue/messages/ack';
+    subs.push(client.subscribe(ack, frame => appendLog(`RECV ${ack}`, JSON.parse(frame.body))));
+
+    const err = '/user/queue/errors';
+    subs.push(client.subscribe(err, frame => appendLog(`RECV ${err}`, JSON.parse(frame.body))));
+
+    const hb = '/user/queue/heartbeat';
+    subs.push(client.subscribe(hb, frame => appendLog(`RECV ${hb}`, JSON.parse(frame.body))));
+
+    appendLog('SUBSCRIBED', { topic, ack, err, hb });
+  }
+
+  function clearSubscriptions() {
+    subs.forEach(s => s.unsubscribe());
+    subs = [];
+  }
+
+  document.getElementById('connectBtn').addEventListener('click', () => {
+    const meetingId = meetingIdEl.value.trim();
+    if (!meetingId) {
+      setStatus('meetingId를 입력하세요', 'err');
+      return;
+    }
+
+    if (client && client.connected) {
+      appendLog('INFO', '이미 연결되어 있습니다.');
+      return;
+    }
+
+    client = new StompJs.Client({
+      brokerURL: wsUrlEl.value.trim(),
+      reconnectDelay: 0,
+      heartbeatIncoming: 10000,
+      heartbeatOutgoing: 10000,
+      debug: (msg) => appendLog('STOMP DEBUG', msg)
+    });
+
+    client.onConnect = () => {
+      setStatus('연결됨', 'ok');
+      appendLog('CONNECTED', { meetingId });
+      subscribeAll(meetingId);
+    };
+
+    client.onWebSocketError = (event) => {
+      setStatus('웹소켓 에러', 'err');
+      appendLog('WS ERROR', event);
+    };
+
+    client.onStompError = (frame) => {
+      setStatus('STOMP 에러', 'err');
+      appendLog('STOMP ERROR', {
+        headers: frame.headers,
+        body: frame.body
+      });
+    };
+
+    client.onDisconnect = () => {
+      setStatus('연결 해제됨');
+      appendLog('DISCONNECTED', 'server disconnected');
+      clearSubscriptions();
+    };
+
+    setStatus('연결 시도 중...');
+    client.activate();
+  });
+
+  document.getElementById('disconnectBtn').addEventListener('click', () => {
+    if (!client) {
+      return;
+    }
+    clearSubscriptions();
+    client.deactivate();
+    setStatus('연결 해제됨');
+    appendLog('DISCONNECT', 'client deactivated');
+  });
+
+  document.getElementById('sendMessageBtn').addEventListener('click', () => {
+    if (!client || !client.connected) {
+      setStatus('먼저 연결하세요', 'err');
+      return;
+    }
+
+    const meetingId = meetingIdEl.value.trim();
+    const destination = `/api/v2/app/meetings/${meetingId}/messages`;
+    const body = buildMessageBody();
+
+    client.publish({ destination, body: JSON.stringify(body) });
+    appendLog(`SEND ${destination}`, body);
+  });
+
+  document.getElementById('heartbeatBtn').addEventListener('click', () => {
+    if (!client || !client.connected) {
+      setStatus('먼저 연결하세요', 'err');
+      return;
+    }
+
+    const destination = '/api/v2/app/heartbeat';
+    const body = {
+      type: 'HEARTBEAT',
+      client_time: new Date().toISOString()
+    };
+
+    client.publish({ destination, body: JSON.stringify(body) });
+    appendLog(`SEND ${destination}`, body);
+  });
+</script>
+</body>
+</html>
