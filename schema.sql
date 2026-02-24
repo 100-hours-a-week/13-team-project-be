@@ -9,6 +9,7 @@ CREATE SEQUENCE member_agreements_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE policy_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE meetings_seq START WITH 1 INCREMENT BY 50;
 CREATE SEQUENCE meeting_participants_seq START WITH 1 INCREMENT BY 50;
+CREATE SEQUENCE chat_messages_seq START WITH 1 INCREMENT BY 1;
 
 -- members
 CREATE TABLE members (
@@ -114,7 +115,7 @@ CREATE TABLE meeting_participants (
     member_id BIGINT NOT NULL,
     role VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL,
-    last_read_at TIMESTAMP,
+    last_read_id BIGINT,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
     CONSTRAINT fk_meeting_participants_meeting
@@ -122,3 +123,28 @@ CREATE TABLE meeting_participants (
     CONSTRAINT fk_meeting_participants_member
         FOREIGN KEY (member_id) REFERENCES members(id)
 );
+
+CREATE INDEX idx_meeting_participants_meeting_status_user
+    ON meeting_participants (meeting_id, status, member_id);
+CREATE INDEX idx_meeting_participants_meeting_last_read_id
+    ON meeting_participants (meeting_id, last_read_id);
+
+-- chat_messages
+CREATE TABLE chat_messages (
+    id BIGINT DEFAULT nextval('chat_messages_seq') PRIMARY KEY,
+    meeting_id BIGINT NOT NULL,
+    participant_id BIGINT NOT NULL,
+    type VARCHAR(20) NOT NULL DEFAULT 'TEXT',
+    client_message_id VARCHAR(64),
+    message TEXT NOT NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_chat_messages_meeting
+        FOREIGN KEY (meeting_id) REFERENCES meetings(id),
+    CONSTRAINT fk_chat_messages_participant
+        FOREIGN KEY (participant_id) REFERENCES meeting_participants(id)
+);
+
+CREATE INDEX idx_chat_messages_meeting_id_id ON chat_messages (meeting_id, id);
+CREATE UNIQUE INDEX uq_chat_messages_idempotency
+    ON chat_messages (meeting_id, participant_id, client_message_id);

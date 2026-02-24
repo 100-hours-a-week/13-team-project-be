@@ -42,6 +42,9 @@ public class MeetingParticipant {
     @Column(length = 20, nullable = false)
     private Status status;
 
+    @Column(name = "last_read_id")
+    private Long lastReadId;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -51,11 +54,12 @@ public class MeetingParticipant {
     private Instant updatedAt;
 
     @Builder
-    private MeetingParticipant(Meeting meeting, Member member, Role role, Status status) {
+    private MeetingParticipant(Meeting meeting, Member member, Role role, Status status, Long lastReadId) {
         this.meeting = meeting;
         this.member = member;
         this.role = role;
         this.status = status;
+        this.lastReadId = lastReadId;
     }
 
     public enum Role {
@@ -75,5 +79,16 @@ public class MeetingParticipant {
 
     public void leave() {
         this.status = Status.LEFT;
+    }
+
+    public boolean advanceLastReadId(Long messageId) {
+        if (messageId == null) {
+            return false;
+        }
+        if (this.lastReadId == null || this.lastReadId < messageId) {
+            this.lastReadId = messageId;
+            return true;
+        }
+        return false;
     }
 }
