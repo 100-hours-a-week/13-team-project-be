@@ -48,6 +48,16 @@ csrf:
 ai-recommendation:
   base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000/api/v1}
 
+chat:
+  unread:
+    window-size: ${CHAT_UNREAD_WINDOW_SIZE:150}
+  redis:
+    listener:
+      enabled: ${CHAT_REDIS_LISTENER_ENABLED:true}
+    channel:
+      message-created: ${CHAT_REDIS_CHANNEL_MESSAGE_CREATED:chat:meeting:message-created}
+      unread-counts-updated: ${CHAT_REDIS_CHANNEL_UNREAD_COUNTS_UPDATED:chat:meeting:unread-counts-updated}
+
 logging:
   level:
     io.awspring.cloud: DEBUG
