@@ -1,7 +1,7 @@
 package com.matchimban.matchimban_api.vote.repository;
 
 import com.matchimban.matchimban_api.vote.entity.Vote;
-import com.matchimban.matchimban_api.vote.entity.VoteStatus;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -47,10 +47,13 @@ public interface VoteRepository extends JpaRepository<Vote, Long> {
         select v.id
         from Vote v
         join v.meeting m
-        where v.status = com.matchimban.matchimban_api.vote.entity.VoteStatus.OPEN
+        where v.status = :status
           and m.voteDeadlineAt <= :now
     """)
-    List<Long> findOpenVoteIdsPastDeadline(@Param("now") Instant now);
+    List<Long> findOpenVoteIdsPastDeadline(
+            @Param("status") VoteStatus status,
+            @Param("now") Instant now
+    );
 
     boolean existsByMeetingIdAndStatusNot(Long meetingId, VoteStatus status);
 

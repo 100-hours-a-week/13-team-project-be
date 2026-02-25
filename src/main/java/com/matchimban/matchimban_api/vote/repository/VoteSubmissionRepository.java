@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.vote.repository;
 
-import com.matchimban.matchimban_api.vote.entity.VoteChoice;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteChoice;
 import com.matchimban.matchimban_api.vote.entity.VoteSubmission;
 
 import java.util.Collection;

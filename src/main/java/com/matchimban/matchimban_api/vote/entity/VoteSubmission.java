@@ -1,6 +1,7 @@
 package com.matchimban.matchimban_api.vote.entity;
 
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteChoice;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;

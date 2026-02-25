@@ -117,6 +117,10 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
                             .like(like)
                             .dislike(dislike)
                             .build())
+                    .exclude(AiRecommendationRequest.Exclude.builder()
+                            .meat(meeting.isExceptMeat())
+                            .bar(meeting.isExceptBar())
+                            .build())
                     .build();
 
             LOG.info("[AI REQ] requestId={}, meetingId={}, hostMemberId={}, radiusM={}, swipeCount={}, headcount={}, startTime={}",

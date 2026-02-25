@@ -15,7 +15,7 @@ import com.matchimban.matchimban_api.vote.dto.response.VoteCandidatesResponse;
 import com.matchimban.matchimban_api.vote.dto.response.VoteResultsResponse;
 import com.matchimban.matchimban_api.vote.dto.response.VoteStatusResponse;
 import com.matchimban.matchimban_api.vote.entity.*;
-import com.matchimban.matchimban_api.vote.entity.VoteStatus;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import com.matchimban.matchimban_api.vote.error.VoteErrorCode;
 import com.matchimban.matchimban_api.vote.event.VoteCandidateGenerationRequestedEvent;
 import com.matchimban.matchimban_api.vote.repository.MeetingFinalSelectionRepository;

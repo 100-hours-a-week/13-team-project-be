@@ -4,6 +4,7 @@ import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.repository.projection.MeetingParticipantProfileRow;
 import com.matchimban.matchimban_api.meeting.repository.projection.MyMeetingRow;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -28,20 +29,20 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
             and mp2.status = :activeStatus
         ),
         m.targetHeadcount,
-        (select v.status
-           from Vote v
-          where v.meeting = m
-            and v.round = (select max(v2.round) from Vote v2 where v2.meeting = m)
+            (select v.status
+               from Vote v
+              where v.meeting = m
+                and v.round = (select max(v2.round) from Vote v2 where v2.meeting = m)
+            )
         )
-    )
-    from MeetingParticipant mp
-    join mp.meeting m
-    where mp.member.id = :memberId
-      and mp.status = :activeStatus
-      and m.isDeleted = false
-      and (:cursor is null or mp.id < :cursor)
-    order by mp.id desc
-""")
+        from MeetingParticipant mp
+        join mp.meeting m
+        where mp.member.id = :memberId
+          and mp.status = :activeStatus
+          and m.isDeleted = false
+          and (:cursor is null or mp.id < :cursor)
+        order by mp.id desc
+    """)
     List<MyMeetingRow> findMyMeetingRows(
             @Param("memberId") Long memberId,
             @Param("cursor") Long cursor,
@@ -147,5 +148,28 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
     """)
     List<Long> findActiveMemberIds(@Param("meetingId") Long meetingId);
 
+    @EntityGraph(attributePaths = {"meeting", "member"})
+    @Query("""
+        select mp
+        from MeetingParticipant mp
+        where mp.meeting.id = :meetingId
+          and mp.member.id = :memberId
+          and mp.status = :status
+          and mp.meeting.isDeleted = false
+    """)
+    Optional<MeetingParticipant> findByMeetingIdAndMemberIdAndStatusWithGraph(
+            @Param("meetingId") Long meetingId,
+            @Param("memberId") Long memberId,
+            @Param("status") MeetingParticipant.Status status
+    );
 
+    @Query("""
+        select mp
+        from MeetingParticipant mp
+        where mp.meeting.id = :meetingId
+          and mp.status = com.matchimban.matchimban_api.meeting.entity.MeetingParticipant.Status.ACTIVE
+          and mp.meeting.isDeleted = false
+        order by mp.createdAt asc, mp.id asc
+    """)
+    List<MeetingParticipant> findActiveParticipants(@Param("meetingId") Long meetingId);
 }
