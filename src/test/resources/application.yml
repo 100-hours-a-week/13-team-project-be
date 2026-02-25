@@ -1,6 +1,9 @@
 spring:
   profiles:
     active: test
+  task:
+    scheduling:
+      enabled: false
   cloud:
     aws:
       parameterstore:
