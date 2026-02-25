@@ -48,10 +48,12 @@ public class SettlementOcrWorker {
                 .map(job -> {
                     if (job.getAttemptCount() >= ocrProps.getMaxAttempts()) {
                         job.markFailed("MAX_ATTEMPTS", "재시도 횟수를 초과했습니다.");
+                        jobRepository.save(job);
                         return null;
                     }
                     Instant lockUntil = Instant.now().plus(ocrProps.getLease());
                     job.markProcessing(instanceId, lockUntil);
+                    jobRepository.save(job);
                     return job.getId();
                 })
                 .orElse(null);
@@ -130,21 +132,33 @@ public class SettlementOcrWorker {
 
     @Transactional
     protected void markSettlementSucceeded(Long settlementId) {
-        settlementRepository.findById(settlementId).ifPresent(s -> s.changeStatus(SettlementStatus.OCR_SUCCEEDED));
+        settlementRepository.findById(settlementId).ifPresent(s -> {
+            s.changeStatus(SettlementStatus.OCR_SUCCEEDED);
+            settlementRepository.save(s);
+        });
     }
 
     @Transactional
     protected void markSettlementFailed(Long settlementId) {
-        settlementRepository.findById(settlementId).ifPresent(s -> s.changeStatus(SettlementStatus.OCR_FAILED));
+        settlementRepository.findById(settlementId).ifPresent(s -> {
+            s.changeStatus(SettlementStatus.OCR_FAILED);
+            settlementRepository.save(s);
+        });
     }
 
     @Transactional
     protected void finishSucceeded(Long jobId) {
-        jobRepository.findById(jobId).ifPresent(SettlementOcrJob::markSucceeded);
+        jobRepository.findById(jobId).ifPresent(job -> {
+            job.markSucceeded();
+            jobRepository.save(job);
+        });
     }
 
     @Transactional
     protected void finishFailed(Long jobId, String code, String message) {
-        jobRepository.findById(jobId).ifPresent(j -> j.markFailed(code, message));
+        jobRepository.findById(jobId).ifPresent(j -> {
+            j.markFailed(code, message);
+            jobRepository.save(j);
+        });
     }
 }
