@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.meeting.repository.projection;
 
-import com.matchimban.matchimban_api.vote.entity.VoteStatus;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

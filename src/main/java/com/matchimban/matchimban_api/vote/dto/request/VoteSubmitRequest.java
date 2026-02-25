@@ -1,6 +1,6 @@
 package com.matchimban.matchimban_api.vote.dto.request;
 
-import com.matchimban.matchimban_api.vote.entity.VoteChoice;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteChoice;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;

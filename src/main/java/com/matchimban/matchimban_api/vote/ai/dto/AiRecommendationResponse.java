@@ -1,8 +1,10 @@
 package com.matchimban.matchimban_api.vote.ai.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.*;
 
@@ -22,15 +24,16 @@ public class AiRecommendationResponse {
 
     private List<Restaurant> restaurants;
 
+    @JsonProperty("created_at")
+    @JsonIgnore
+    private OffsetDateTime createdAt;
+
     @Getter @Setter
     @NoArgsConstructor @AllArgsConstructor
     @Builder
     public static class Restaurant {
-        private Long id;
-        private String name;
 
-        @JsonProperty("category_mapped")
-        private String categoryMapped;
+        private Long id;
 
         @JsonProperty("distance_m")
         private Integer distanceM;
@@ -38,7 +41,6 @@ public class AiRecommendationResponse {
         @JsonProperty("final_score")
         private BigDecimal finalScore;
 
-        // FastAPI가 rank를 보낼 수도 있으니 받아두고 싶으면:
-         private Integer rank;
+        private Integer rank;
     }
 }

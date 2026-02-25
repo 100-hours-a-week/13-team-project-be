@@ -2,8 +2,8 @@ package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
 import com.matchimban.matchimban_api.vote.entity.MeetingRestaurantCandidate;
 import com.matchimban.matchimban_api.vote.entity.Vote;
-import com.matchimban.matchimban_api.vote.entity.VoteChoice;
-import com.matchimban.matchimban_api.vote.entity.VoteStatus;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteChoice;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.MeetingRestaurantCandidateRepository;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import com.matchimban.matchimban_api.vote.repository.VoteSubmissionRepository;
