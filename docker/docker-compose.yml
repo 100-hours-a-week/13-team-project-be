@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${ECR_REGISTRY}/moyeobab/backend:${IMAGE_TAG}
+    image: ${ECR_REGISTRY}/moyeobab/${ENV}/backend:${IMAGE_TAG}
     network_mode: host
     env_file: .env
     environment:
