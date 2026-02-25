@@ -19,7 +19,7 @@ spring:
   cloud:
     aws:
       region:
-        static: ap-northeast-2
+        static: ${AWS_REGION}
 
 management:
   endpoints:
@@ -71,8 +71,8 @@ chat:
 
 app:
   s3:
-    bucket: moyeobab-receipt-images
-    receipt-prefix: settlements
+    bucket: ${APP_S3_BUCKET}
+    receipt-prefix: ${APP_S3_RECEIPT_PREFIX}
     presign-upload-ttl: 10m
 
   ocr:
