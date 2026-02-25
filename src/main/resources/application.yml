@@ -14,7 +14,12 @@ spring:
         format_sql: true
 
   flyway:
-    enabled: ${FLYWAY_ENABLED:false}
+    enabled: ${FLYWAY_ENABLED:true}
+
+  cloud:
+    aws:
+      region:
+        static: ap-northeast-2
 
 management:
   endpoints:
@@ -63,6 +68,20 @@ chat:
     channel:
       message-created: ${CHAT_REDIS_CHANNEL_MESSAGE_CREATED:chat:meeting:message-created}
       unread-counts-updated: ${CHAT_REDIS_CHANNEL_UNREAD_COUNTS_UPDATED:chat:meeting:unread-counts-updated}
+
+app:
+  s3:
+    bucket: moyeobab-receipt-images
+    receipt-prefix: settlements
+    presign-upload-ttl: 10m
+
+  ocr:
+    base-url: ${RUNPOD_OCR_BASE_URL}
+    timeout: 30s
+    lease: 60s
+    poll-delay: 1000ms
+    max-attempts: 3
+
 
 #server:
 #  tomcat:

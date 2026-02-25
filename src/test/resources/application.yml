@@ -1,9 +1,14 @@
 spring:
   profiles:
     active: test
+  task:
+    scheduling:
+      enabled: false
   cloud:
     aws:
       parameterstore:
+        enabled: false
+      s3:
         enabled: false
   flyway:
     enabled: false
