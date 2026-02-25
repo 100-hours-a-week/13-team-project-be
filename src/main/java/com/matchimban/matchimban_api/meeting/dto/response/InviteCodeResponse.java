@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.meeting.dto;
+package com.matchimban.matchimban_api.meeting.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

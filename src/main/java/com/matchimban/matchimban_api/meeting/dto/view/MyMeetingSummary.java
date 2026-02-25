@@ -1,5 +1,6 @@
-package com.matchimban.matchimban_api.meeting.dto;
+package com.matchimban.matchimban_api.meeting.dto.view;
 
+import com.matchimban.matchimban_api.meeting.dto.enums.MeetingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

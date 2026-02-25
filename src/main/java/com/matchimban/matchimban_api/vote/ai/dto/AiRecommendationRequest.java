@@ -16,6 +16,7 @@ public class AiRecommendationRequest {
     private Location location;
     private Swipe swipe;
     private Preferences preferences;
+    private Exclude exclude;
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class Meeting {
@@ -42,5 +43,11 @@ public class AiRecommendationRequest {
     public static class Preferences {
         private Map<String, Integer> like;
         private Map<String, Integer> dislike;
+    }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class Exclude {
+        private boolean meat;
+        private boolean bar;
     }
 }

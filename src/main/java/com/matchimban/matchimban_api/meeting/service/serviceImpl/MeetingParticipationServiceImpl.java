@@ -2,8 +2,8 @@ package com.matchimban.matchimban_api.meeting.service.serviceImpl;
 
 import com.matchimban.matchimban_api.chat.service.ChatSystemMessageService;
 import com.matchimban.matchimban_api.global.error.api.ApiException;
-import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingRequest;
-import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingResponse;
+import com.matchimban.matchimban_api.meeting.dto.request.ParticipateMeetingRequest;
+import com.matchimban.matchimban_api.meeting.dto.response.ParticipateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
@@ -11,7 +11,7 @@ import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantReposi
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.meeting.service.MeetingParticipationService;
 import com.matchimban.matchimban_api.member.entity.Member;
-import com.matchimban.matchimban_api.vote.entity.VoteStatus;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
