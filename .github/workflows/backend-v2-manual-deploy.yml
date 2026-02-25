@@ -69,6 +69,7 @@ jobs:
               "> ${COMPOSE_DIR}/.env",
               "echo \"ECR_REGISTRY=${ECR_REGISTRY}\" >> ${COMPOSE_DIR}/.env",
               "echo \"IMAGE_TAG=${IMAGE_TAG}\" >> ${COMPOSE_DIR}/.env",
+              "echo \"ENV=${DEPLOY_ENV}\" >> ${COMPOSE_DIR}/.env",
               "echo \"SPRING_PROFILES_ACTIVE=${DEPLOY_ENV}\" >> ${COMPOSE_DIR}/.env",
               "",
               "# Deploy",
