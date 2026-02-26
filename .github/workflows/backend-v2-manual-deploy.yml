@@ -129,6 +129,14 @@ jobs:
             exit 1
           fi
 
+      - name: Save IMAGE_TAG to Parameter Store
+        run: |
+          aws ssm put-parameter \
+            --name "/moyeobab/spring/${{ env.DEPLOY_ENV }}/IMAGE_TAG" \
+            --value "${{ env.IMAGE_TAG }}" \
+            --type String \
+            --overwrite
+
       - name: Notify Discord
         if: always()
         env:
