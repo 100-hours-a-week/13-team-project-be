@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.vote.entity;
+package com.matchimban.matchimban_api.vote.entity.enums;
 
 public enum VoteStatus {
     GENERATING,

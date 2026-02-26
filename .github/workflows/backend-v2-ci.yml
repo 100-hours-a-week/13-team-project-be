@@ -38,8 +38,7 @@ jobs:
 
       - name: Build and Verify (Lint, Test)
         env:
-          SPRING_PROFILES_ACTIVE: local
-          SPRING_CLOUD_AWS_PARAMETERSTORE_ENABLED: "false"
+          SPRING_PROFILES_ACTIVE: test
         run: ./gradlew build -x bootJar --no-daemon --parallel
 
       - name: Publish Test Report

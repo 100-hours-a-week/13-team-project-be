@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.vote.service;
 
+import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 
 import java.time.Instant;
@@ -18,7 +19,7 @@ public class VoteDeadlineScheduler {
 
     @Scheduled(fixedDelay = 30_000)
     public void triggerCountForExpiredVotes() {
-        List<Long> voteIds = voteRepository.findOpenVoteIdsPastDeadline(Instant.now());
+        List<Long> voteIds = voteRepository.findOpenVoteIdsPastDeadline(VoteStatus.OPEN, Instant.now());
         for (Long voteId : voteIds) {
             boolean started = voteCountService.tryStartCounting(voteId);
             if (started) {

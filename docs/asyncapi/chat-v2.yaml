@@ -1,0 +1,301 @@
+asyncapi: 3.0.0
+info:
+  title: Matchimban Chat V2
+  version: 2.0.0
+  description: |
+    모임 단체 톡방(STOMP over WebSocket) 명세.
+    unread_count / last_read_id 기반 실시간 브로드캐스트 포함.
+servers:
+  local:
+    host: localhost:8080
+    protocol: ws
+    pathname: /api/v2/ws
+    description: Local WebSocket endpoint
+channels:
+  /api/v2/app/meetings/{meetingId}/messages:
+    address: /api/v2/app/meetings/{meetingId}/messages
+    parameters:
+      meetingId:
+        $ref: '#/components/parameters/meetingId'
+    messages:
+      sendMessageRequest:
+        $ref: '#/components/messages/SendMessageRequest'
+    description: 클라이언트가 새 메시지를 전송하는 SEND destination
+  /api/v2/topic/meetings/{meetingId}/messages:
+    address: /api/v2/topic/meetings/{meetingId}/messages
+    parameters:
+      meetingId:
+        $ref: '#/components/parameters/meetingId'
+    messages:
+      messageCreated:
+        $ref: '#/components/messages/MessageCreatedEvent'
+    description: 서버가 모임 참여자에게 새 메시지를 브로드캐스트하는 SUBSCRIBE destination
+  /user/queue/messages/ack:
+    address: /user/queue/messages/ack
+    messages:
+      messageSendAck:
+        $ref: '#/components/messages/MessageSendAckEvent'
+    description: 메시지 전송 성공 ACK (송신자 세션 전용)
+  /api/v2/app/heartbeat:
+    address: /api/v2/app/heartbeat
+    messages:
+      heartbeatRequest:
+        $ref: '#/components/messages/HeartbeatRequest'
+    description: 클라이언트 heartbeat SEND destination
+  /user/queue/heartbeat:
+    address: /user/queue/heartbeat
+    messages:
+      heartbeatAck:
+        $ref: '#/components/messages/HeartbeatAck'
+    description: heartbeat ACK (송신자 세션 전용)
+  /user/queue/errors:
+    address: /user/queue/errors
+    messages:
+      errorMessage:
+        $ref: '#/components/messages/ErrorMessage'
+    description: 메시지 처리 오류를 전달하는 사용자 전용 큐
+  /api/v2/topic/meetings/{meetingId}/unread-counts:
+    address: /api/v2/topic/meetings/{meetingId}/unread-counts
+    parameters:
+      meetingId:
+        $ref: '#/components/parameters/meetingId'
+    messages:
+      unreadCountsUpdated:
+        $ref: '#/components/messages/UnreadCountsUpdatedEvent'
+    description: 최근 윈도우 메시지의 unread_count를 브로드캐스트하는 SUBSCRIBE destination
+operations:
+  sendMeetingMessage:
+    action: send
+    channel:
+      $ref: '#/channels/~1api~1v2~1app~1meetings~1{meetingId}~1messages'
+    messages:
+      - $ref: '#/channels/~1api~1v2~1app~1meetings~1{meetingId}~1messages/messages/sendMessageRequest'
+    summary: 메시지 전송
+  receiveMessageCreated:
+    action: receive
+    channel:
+      $ref: '#/channels/~1api~1v2~1topic~1meetings~1{meetingId}~1messages'
+    messages:
+      - $ref: '#/channels/~1api~1v2~1topic~1meetings~1{meetingId}~1messages/messages/messageCreated'
+    summary: 새 메시지 수신
+  receiveSendAck:
+    action: receive
+    channel:
+      $ref: '#/channels/~1user~1queue~1messages~1ack'
+    messages:
+      - $ref: '#/channels/~1user~1queue~1messages~1ack/messages/messageSendAck'
+    summary: 메시지 ACK 수신
+  sendHeartbeat:
+    action: send
+    channel:
+      $ref: '#/channels/~1api~1v2~1app~1heartbeat'
+    messages:
+      - $ref: '#/channels/~1api~1v2~1app~1heartbeat/messages/heartbeatRequest'
+    summary: heartbeat 전송
+  receiveHeartbeatAck:
+    action: receive
+    channel:
+      $ref: '#/channels/~1user~1queue~1heartbeat'
+    messages:
+      - $ref: '#/channels/~1user~1queue~1heartbeat/messages/heartbeatAck'
+    summary: heartbeat ACK 수신
+  receiveError:
+    action: receive
+    channel:
+      $ref: '#/channels/~1user~1queue~1errors'
+    messages:
+      - $ref: '#/channels/~1user~1queue~1errors/messages/errorMessage'
+    summary: 오류 메시지 수신
+  receiveUnreadCountsUpdated:
+    action: receive
+    channel:
+      $ref: '#/channels/~1api~1v2~1topic~1meetings~1{meetingId}~1unread-counts'
+    messages:
+      - $ref: '#/channels/~1api~1v2~1topic~1meetings~1{meetingId}~1unread-counts/messages/unreadCountsUpdated'
+    summary: unread_count 윈도우 수신
+components:
+  parameters:
+    meetingId:
+      description: 모임 ID
+      default: '10'
+      examples: ['10']
+  messages:
+    SendMessageRequest:
+      payload:
+        type: object
+        required: [type, content]
+        properties:
+          client_message_id:
+            type: string
+            format: uuid
+            example: 8c2f3b1a-8d4d-4dd8-9a10-4d8b0d9f8f21
+          type:
+            type: string
+            enum: [TEXT, IMAGE]
+            example: TEXT
+          content:
+            type: string
+            example: 저도 투표했습니다!
+    MessageCreatedEvent:
+      payload:
+        type: object
+        required: [event, data]
+        properties:
+          event:
+            type: string
+            example: message_created
+          data:
+            type: object
+            required: [meeting_id, message_id, type, content, sender, created_at]
+            properties:
+              meeting_id:
+                type: integer
+                format: int64
+                example: 10
+              message_id:
+                type: integer
+                format: int64
+                example: 13003
+              type:
+                type: string
+                enum: [TEXT, IMAGE, SYSTEM]
+                example: TEXT
+              content:
+                type: string
+                example: 저도 투표했습니다!
+              sender:
+                type: object
+                nullable: true
+                properties:
+                  user_id:
+                    type: integer
+                    format: int64
+                    example: 3
+                  name:
+                    type: string
+                    example: 김지은
+                  profile_image_url:
+                    type: string
+                    example: https://cdn.example.com/profile/3.png
+              created_at:
+                type: string
+                format: date-time
+                example: 2026-01-08T15:11:02+09:00
+    MessageSendAckEvent:
+      payload:
+        type: object
+        required: [event, data]
+        properties:
+          event:
+            type: string
+            example: message_send_ack
+          data:
+            type: object
+            required: [meeting_id, message_id, status, created_at]
+            properties:
+              meeting_id:
+                type: integer
+                format: int64
+                example: 10
+              client_message_id:
+                type: string
+                format: uuid
+                nullable: true
+                example: 8c2f3b1a-8d4d-4dd8-9a10-4d8b0d9f8f21
+              message_id:
+                type: integer
+                format: int64
+                example: 13003
+              status:
+                type: string
+                enum: [ACCEPTED]
+                example: ACCEPTED
+              created_at:
+                type: string
+                format: date-time
+                example: 2026-01-08T15:11:02+09:00
+    HeartbeatRequest:
+      payload:
+        type: object
+        properties:
+          type:
+            type: string
+            example: HEARTBEAT
+          client_time:
+            type: string
+            format: date-time
+            example: 2026-01-08T15:11:00+09:00
+    HeartbeatAck:
+      payload:
+        type: object
+        required: [type, server_time]
+        properties:
+          type:
+            type: string
+            example: HEARTBEAT_ACK
+          server_time:
+            type: string
+            format: date-time
+            example: 2026-01-08T15:11:00+09:00
+    ErrorMessage:
+      payload:
+        type: object
+        required: [message]
+        properties:
+          message:
+            type: string
+            example: forbidden
+    UnreadCountsUpdatedEvent:
+      payload:
+        type: object
+        required: [event, data]
+        properties:
+          event:
+            type: string
+            example: unread_counts_updated
+          data:
+            type: object
+            required: [meeting_id, basis, items, server_version, generated_at]
+            properties:
+              meeting_id:
+                type: integer
+                format: int64
+                example: 10
+              basis:
+                type: object
+                required: [window_size, from_message_id, to_message_id]
+                properties:
+                  window_size:
+                    type: integer
+                    example: 50
+                  from_message_id:
+                    type: integer
+                    format: int64
+                    nullable: true
+                    example: 12954
+                  to_message_id:
+                    type: integer
+                    format: int64
+                    nullable: true
+                    example: 13003
+              items:
+                type: array
+                items:
+                  type: object
+                  required: [message_id, unread_count]
+                  properties:
+                    message_id:
+                      type: integer
+                      format: int64
+                      example: 12954
+                    unread_count:
+                      type: integer
+                      example: 7
+              server_version:
+                type: integer
+                format: int64
+                example: 1002
+              generated_at:
+                type: string
+                format: date-time
+                example: 2026-01-08T15:10:30+09:00

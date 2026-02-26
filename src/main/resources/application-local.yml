@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/matchimban}
+    username: ${DB_USERNAME:matchimban}
+    password: ${DB_PASSWORD:matchimban}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+kakao:
+  oauth:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:}
+    frontend-redirect-url: ${KAKAO_FRONTEND_REDIRECT_URL:/}
+    admin-key: ${KAKAO_ADMIN_KEY:}
+
+jwt:
+  secret: ${JWT_SECRET:}
+  issuer: ${JWT_ISSUER:matchimban}
+  access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:60}
+  cookie-name: ${JWT_COOKIE_NAME:access_token}
+  refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refresh_token}
+  refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:7}
+  cookie-secure: ${JWT_COOKIE_SECURE:false}
+  cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
+
+csrf:
+  cookie-domain: ${CSRF_COOKIE_DOMAIN:}
+
+ai-recommendation:
+  base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000/api/v1}

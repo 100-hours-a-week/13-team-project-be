@@ -1,6 +1,8 @@
-package com.matchimban.matchimban_api.meeting.dto;
+package com.matchimban.matchimban_api.meeting.dto.response;
 
-import com.matchimban.matchimban_api.vote.entity.VoteStatus;
+import com.matchimban.matchimban_api.meeting.dto.enums.MeetingStatus;
+import com.matchimban.matchimban_api.meeting.dto.view.MeetingParticipantSummary;
+import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -61,6 +63,9 @@ public class MeetingDetailResponse {
 
     @Schema(description = "현재 참여자 수(ACTIVE 기준)")
     private long participantCount;
+
+    @Schema(description = "내가 읽지 않은 채팅 메시지 수 (SYSTEM/내 메시지 제외)")
+    private long chatUnreadCount;
 
     @Schema(description = "참여자 목록")
     private List<MeetingParticipantSummary> participants;

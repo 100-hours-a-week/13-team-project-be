@@ -1,4 +1,4 @@
-package com.matchimban.matchimban_api.meeting.dto;
+package com.matchimban.matchimban_api.meeting.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

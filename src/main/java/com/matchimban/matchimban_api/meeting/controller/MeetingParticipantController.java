@@ -1,8 +1,8 @@
 package com.matchimban.matchimban_api.meeting.controller;
 
 import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
-import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingRequest;
-import com.matchimban.matchimban_api.meeting.dto.ParticipateMeetingResponse;
+import com.matchimban.matchimban_api.meeting.dto.request.ParticipateMeetingRequest;
+import com.matchimban.matchimban_api.meeting.dto.response.ParticipateMeetingResponse;
 import com.matchimban.matchimban_api.meeting.service.MeetingParticipationService;
 import com.matchimban.matchimban_api.global.swagger.CsrfRequired;
 import io.swagger.v3.oas.annotations.Operation;

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matchimban AsyncAPI</title>
+  <link rel="stylesheet" href="https://unpkg.com/@asyncapi/react-component@latest/styles/default.min.css">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #f8fafc;
+      font-family: "Pretendard", "Noto Sans KR", sans-serif;
+    }
+
+    #asyncapi {
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+<div id="asyncapi"></div>
+<script src="https://unpkg.com/@asyncapi/react-component@latest/browser/standalone/index.js"></script>
+<script>
+  AsyncApiStandalone.render(
+    {
+      schema: {
+        url: '/asyncapi/chat-v2.yaml',
+        options: { method: 'GET', mode: 'cors' }
+      },
+      config: {
+        schemaID: 'matchimban-chat-v2',
+        show: {
+          sidebar: true,
+          errors: true
+        }
+      }
+    },
+    document.getElementById('asyncapi')
+  );
+</script>
+</body>
+</html>
