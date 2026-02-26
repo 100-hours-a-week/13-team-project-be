@@ -22,6 +22,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -55,6 +56,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 		"resilience4j.bulkhead.instances.kakao.max-wait-duration=0"
 	}
 )
+@ActiveProfiles("test")
 class KakaoOAuthProviderIntegrationTest {
 
 	@Autowired

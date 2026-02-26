@@ -1,7 +1,9 @@
 package com.matchimban.matchimban_api.meeting.controller;
 
 import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
-import com.matchimban.matchimban_api.meeting.dto.*;
+import com.matchimban.matchimban_api.meeting.dto.request.CreateMeetingRequest;
+import com.matchimban.matchimban_api.meeting.dto.request.UpdateMeetingRequest;
+import com.matchimban.matchimban_api.meeting.dto.response.*;
 import com.matchimban.matchimban_api.meeting.service.MeetingReadService;
 import com.matchimban.matchimban_api.meeting.service.MeetingService;
 import com.matchimban.matchimban_api.global.swagger.CsrfRequired;

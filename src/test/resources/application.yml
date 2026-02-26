@@ -1,10 +1,24 @@
 spring:
+  profiles:
+    active: test
+  task:
+    scheduling:
+      enabled: false
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+      s3:
+        enabled: false
+  flyway:
+    enabled: false
   datasource:
     url: jdbc:h2:mem:testdb;MODE=PostgreSQL
     username: sa
     password:
     driver-class-name: org.h2.Driver
   jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
     show-sql: true
@@ -22,3 +36,8 @@ jwt:
 ai-recommendation:
   base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000/api/v1}
   timeout-ms: 5000
+
+chat:
+  redis:
+    listener:
+      enabled: false
