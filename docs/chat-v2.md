@@ -12,6 +12,10 @@
   - body: `{ "last_read_message_id": 13003 }`
   - 현재 사용자의 `meeting_participants.last_read_id`를 전진시킴 (`GREATEST` 규칙)
   - 업데이트 시 최근 unread_count 윈도우 재계산/브로드캐스트 트리거
+- `POST /api/v2/meetings/{meetingId}/images/presign`
+  - body: `{ "content_type": "image/png", "file_name": "photo.png", "file_size": 345678 }`
+  - 응답: `{ "upload_url", "file_key", "public_url", ... }`
+  - 프론트 순서: presign 발급 -> S3 PUT 업로드 -> STOMP 메시지 전송(`type=IMAGE`, `content=public_url`)
 
 ## STOMP (AsyncAPI)
 - WebSocket endpoint: `/api/v2/ws`
@@ -44,6 +48,11 @@
   - 읽음 포인터 업데이트 시 (`POST /read-pointer`)
 - 브로드캐스트 범위: 최근 `chat.unread.window-size` (기본 150개)
 - `server_version`: Redis `INCR(chat:meeting:unread-version:{meetingId})`
+
+## 프론트 표시 정책 (현재)
+- 채팅 UI는 `SYSTEM` 메시지를 제외한 일반 메시지(`TEXT`, `IMAGE`)에 대해 `unread_count > 0`이면 숫자를 표시한다.
+- 즉, 내 메시지뿐 아니라 다른 참여자가 보낸 메시지에도 unread 숫자를 노출한다.
+- 데이터 소스는 동일하게 `GET /messages` 응답의 `items[].unread_count` 및 STOMP `/unread-counts` 이벤트다.
 
 ## DB 변경
 - `chat_messages` 테이블 추가
