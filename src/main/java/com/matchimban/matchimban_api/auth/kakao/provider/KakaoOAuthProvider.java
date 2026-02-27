@@ -213,7 +213,11 @@ public class KakaoOAuthProvider implements OAuthProvider {
 	}
 
 	private void validateOauthConfig() {
-		if (properties.clientId() == null || properties.clientId().isBlank()
+		if (properties.authorizeUrl() == null || properties.authorizeUrl().isBlank()
+			|| properties.tokenUrl() == null || properties.tokenUrl().isBlank()
+			|| properties.userInfoUrl() == null || properties.userInfoUrl().isBlank()
+			|| properties.unlinkUrl() == null || properties.unlinkUrl().isBlank()
+			|| properties.clientId() == null || properties.clientId().isBlank()
 			|| properties.redirectUri() == null || properties.redirectUri().isBlank()) {
 			throw new ApiException(
 				AuthErrorCode.INTERNAL_SERVER_ERROR,
@@ -252,4 +256,3 @@ public class KakaoOAuthProvider implements OAuthProvider {
 		return new ApiException(errorCode, throwable.getMessage());
 	}
 }
-
