@@ -34,13 +34,13 @@ public class Restaurant {
     @Column(name = "jibun_address")
     private String jibunAddress;
 
-    @Column(name = "image_url1")
+    @Column(name = "image_1")
     private String imageUrl1;
 
-    @Column(name = "image_url2")
+    @Column(name = "image_2")
     private String imageUrl2;
 
-    @Column(name = "image_url3")
+    @Column(name = "image_3")
     private String imageUrl3;
 
     @CreatedDate
