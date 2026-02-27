@@ -109,6 +109,7 @@ public class VoteCountServiceImpl implements VoteCountService {
             }
 
             vote.markCounted(Instant.now());
+            // TODO(notification): 투표 집계 완료/Top3 생성 알림. recipients: ACTIVE MeetingParticipant.memberId
 
             LOG.info("Vote counted. voteId={}, candidates={}", voteId, candidates.size());
 

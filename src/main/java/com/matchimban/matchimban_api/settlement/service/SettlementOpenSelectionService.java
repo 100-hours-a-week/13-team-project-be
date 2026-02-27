@@ -66,6 +66,7 @@ public class SettlementOpenSelectionService {
         int created = initSettlementParticipants(settlement, meetingId);
 
         settlement.changeStatus(SettlementStatus.SELECTION_OPEN);
+        // TODO(notification): 메뉴 확인 요청 알림. recipients: MEMBER role MeetingParticipant.memberId (exclude host)
 
         return new OpenSelectionResponse(settlement.getId(), settlement.getSettlementStatus(), created);
     }
