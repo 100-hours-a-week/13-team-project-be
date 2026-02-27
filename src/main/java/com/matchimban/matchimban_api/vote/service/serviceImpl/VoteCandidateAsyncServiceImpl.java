@@ -169,6 +169,7 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
 
             Instant now = Instant.now();
             v1.markOpen(now);
+            // TODO(notification): 1차 투표 OPEN 알림. recipients: ACTIVE MeetingParticipant.memberId
             v2.markReserved(now);
 
             LOG.info("Vote candidates generated. meetingId={}, v1Saved={}, v2Saved={}", meetingId, savedR1, savedR2);

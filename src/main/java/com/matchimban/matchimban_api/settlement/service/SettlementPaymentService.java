@@ -53,6 +53,7 @@ public class SettlementPaymentService {
 
         if (sp.getPaymentStatus() == PaymentStatus.UNPAID) {
             sp.requestPayment(Instant.now());
+            // TODO(notification): 송금 확인 요청 알림. recipients: HOST MeetingParticipant.memberId
         }
 
         return new PaymentStatusResponse(settlement.getId(), mp.getId(), sp.getPaymentStatus());
@@ -84,6 +85,7 @@ public class SettlementPaymentService {
 
         if (sp.getPaymentStatus() != PaymentStatus.DONE) {
             sp.confirmPayment(Instant.now());
+            // TODO(notification): 송금 완료 확인 알림. recipients: target SettlementParticipant.participant.memberId
         }
 
         return new PaymentStatusResponse(settlement.getId(), targetMeetingParticipantId, sp.getPaymentStatus());
@@ -111,7 +113,7 @@ public class SettlementPaymentService {
 
         long count = settlementParticipantRepository.countBySettlementIdAndPaymentStatus(settlement.getId(), PaymentStatus.UNPAID);
 
-        // TODO: 알림 시스템 붙이면 여기서 발송
+        // TODO(notification): 미송금자 송금 요청 알림. recipients: PaymentStatus.UNPAID SettlementParticipant.participant.memberId
         return new RemindUnpaidResponse(count);
     }
 }

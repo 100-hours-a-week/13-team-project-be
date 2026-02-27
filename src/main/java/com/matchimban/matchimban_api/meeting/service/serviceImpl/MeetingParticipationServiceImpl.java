@@ -54,6 +54,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
 
         if (existing != null) {
             existing.reactivate();
+            // TODO(notification): 새 모임원 참여 알림. recipients: ACTIVE MeetingParticipant.memberId (exclude self, optionally host only)
             chatSystemMessageService.publishSystemMessage(existing, buildJoinSystemMessage(existing.getMember().getNickname()));
             return new ParticipateMeetingResponse(meetingId);
         }
@@ -68,6 +69,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
                 .build();
 
         meetingParticipantRepository.save(participant);
+        // TODO(notification): 새 모임원 참여 알림. recipients: ACTIVE MeetingParticipant.memberId (exclude self, optionally host only)
         chatSystemMessageService.publishSystemMessage(participant, buildJoinSystemMessage(memberRef.getNickname()));
         return new ParticipateMeetingResponse(meetingId);
     }
