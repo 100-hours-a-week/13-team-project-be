@@ -5,10 +5,10 @@ spring:
   profiles:
     active: local
 
-  cloud:
-    aws:
-      region:
-        static: ${AWS_REGION:ap-northeast-2}
+  # cloud:
+  #   aws:
+  #     region:
+  #       static: ${AWS_REGION:ap-northeast-2}
 
   jpa:
     hibernate:
@@ -21,10 +21,10 @@ spring:
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
 
-  cloud:
-    aws:
-      region:
-        static: ${AWS_REGION}
+  # cloud:
+  #   aws:
+  #     region:
+  #       static: ${AWS_REGION}
 
 management:
   endpoints:
