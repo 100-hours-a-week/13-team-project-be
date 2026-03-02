@@ -18,6 +18,7 @@ import javax.crypto.SecretKey;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 @Component // DI를 위해서 붙임
@@ -94,8 +95,12 @@ public class JwtTokenProvider {
 
 	public Optional<Authentication> getAuthentication(String token) { //토큰 → Authentication 만들기
 		return parseToken(token, false)
-			.map(principal -> new UsernamePasswordAuthenticationToken(principal, null, List.of()));
-	}
+                .map(principal -> new UsernamePasswordAuthenticationToken(
+                        principal,
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_MEMBER"))
+                ));
+    }
 
 	public Optional<MemberPrincipal> parsePrincipalAllowExpired(String token) {
 		// refresh 요청 시 access token이 만료되어도 sid를 추출해야 한다.

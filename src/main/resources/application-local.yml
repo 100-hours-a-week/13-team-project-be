@@ -11,6 +11,10 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
 
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 1
+
 kakao:
   oauth:
     authorize-url: ${KAKAO_AUTHORIZE_URL:https://kauth.kakao.com/oauth/authorize}
@@ -34,6 +38,8 @@ jwt:
   refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:7}
   cookie-secure: ${JWT_COOKIE_SECURE:false}
   cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
+  guest-cookie-name: ${JWT_GUEST_COOKIE_NAME:guest_access_token}
+  guest-access-token-max-minutes: ${JWT_GUEST_ACCESS_TOKEN_MAX_MINUTES:180}
 
 csrf:
   cookie-domain: ${CSRF_COOKIE_DOMAIN:}
@@ -48,3 +54,4 @@ chat:
     presign-expires-seconds: ${CHAT_IMAGE_PRESIGN_EXPIRES_SECONDS:120}
     max-file-size-bytes: ${CHAT_IMAGE_MAX_FILE_SIZE_BYTES:10485760}
     allowed-content-types: ${CHAT_IMAGE_ALLOWED_CONTENT_TYPES:image/jpeg,image/jpg,image/png,image/webp,image/gif}
+

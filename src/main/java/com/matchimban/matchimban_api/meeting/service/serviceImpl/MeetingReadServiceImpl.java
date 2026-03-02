@@ -97,6 +97,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                         toKstLocalDateTime(r.getScheduledAt()),
                         r.getParticipantCount(),
                         r.getTargetHeadcount(),
+                        r.isQuickMeeting(),
                         meetingStatusByMeetingId.get(r.getMeetingId())
                 ))
                 .toList();

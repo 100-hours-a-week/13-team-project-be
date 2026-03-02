@@ -73,23 +73,33 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
                 throw new ApiException(VoteErrorCode.VOTE_CREATE_NOT_READY_HEADCOUNT, "no_active_participants");
             }
 
-            var categories = foodCategoryRepository.findByCategoryType(CATEGORY);
-            Map<String, Integer> like = new LinkedHashMap<>();
-            Map<String, Integer> dislike = new LinkedHashMap<>();
-            for (var c : categories) {
-                like.put(c.getCategoryName(), 0);
-                dislike.put(c.getCategoryName(), 0);
-            }
+            Map<String, Integer> like;
+            Map<String, Integer> dislike;
 
-            List<MemberCategoryMapping> mappings = memberCategoryMappingRepository.findByMemberIdsWithCategory(memberIds);
-            for (MemberCategoryMapping m : mappings) {
-                String key = m.getCategory().getCategoryName();
-                if (!like.containsKey(key)) continue;
+            if (meeting.isQuickMeeting()) {
+                like = Collections.emptyMap();
+                dislike = Collections.emptyMap();
+            } else {
+                var categories = foodCategoryRepository.findByCategoryType(CATEGORY);
+                like = new LinkedHashMap<>();
+                dislike = new LinkedHashMap<>();
+                for (var c : categories) {
+                    like.put(c.getCategoryName(), 0);
+                    dislike.put(c.getCategoryName(), 0);
+                }
 
-                if (m.getRelationType() == MemberCategoryRelationType.PREFERENCE) {
-                    like.put(key, like.get(key) + 1);
-                } else if (m.getRelationType() == MemberCategoryRelationType.DISLIKE) {
-                    dislike.put(key, dislike.get(key) + 1);
+                List<MemberCategoryMapping> mappings =
+                        memberCategoryMappingRepository.findByMemberIdsWithCategory(memberIds);
+
+                for (MemberCategoryMapping m : mappings) {
+                    String key = m.getCategory().getCategoryName();
+                    if (!like.containsKey(key)) continue;
+
+                    if (m.getRelationType() == MemberCategoryRelationType.PREFERENCE) {
+                        like.put(key, like.get(key) + 1);
+                    } else if (m.getRelationType() == MemberCategoryRelationType.DISLIKE) {
+                        dislike.put(key, dislike.get(key) + 1);
+                    }
                 }
             }
 

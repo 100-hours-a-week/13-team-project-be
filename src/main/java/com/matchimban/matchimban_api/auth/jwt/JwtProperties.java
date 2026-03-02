@@ -20,6 +20,10 @@ public record JwtProperties(
 	String cookieName,
 	@NotBlank
 	String refreshCookieName,
+    @NotBlank
+    String guestCookieName,
+    @Positive
+    long guestAccessTokenMaxMinutes,
 	@Positive
 	long refreshTokenExpireDays,
 	boolean cookieSecure,

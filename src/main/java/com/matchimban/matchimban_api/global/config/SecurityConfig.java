@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.global.config;
 
+import com.matchimban.matchimban_api.auth.jwt.GuestJwtAuthenticationFilter;
 import com.matchimban.matchimban_api.auth.jwt.JwtAuthenticationFilter;
 import com.matchimban.matchimban_api.auth.jwt.MemberStatusFilter;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.ForwardedHeaderFilter;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 public class SecurityConfig {
@@ -26,6 +28,7 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(
 		HttpSecurity http,
 		JwtAuthenticationFilter jwtAuthenticationFilter,
+        GuestJwtAuthenticationFilter guestJwtAuthenticationFilter,
 		MemberStatusFilter memberStatusFilter
 	) throws Exception {
 		CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
@@ -45,10 +48,13 @@ public class SecurityConfig {
 				.csrfTokenRequestHandler(csrfRequestHandler)
 				.ignoringRequestMatchers("/api/dev/**")
 			)
-			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-			.addFilterAfter(memberStatusFilter, JwtAuthenticationFilter.class)
-			.authorizeHttpRequests(auth -> auth
-				.requestMatchers(
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(guestJwtAuthenticationFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(memberStatusFilter, GuestJwtAuthenticationFilter.class)
+                .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                .requestMatchers(
 					"/swagger-ui/**",
 					"/v3/api-docs/**",
 					"/swagger-ui.html",
@@ -65,8 +71,11 @@ public class SecurityConfig {
 					"/actuator/prometheus"
 				)
 				.permitAll()
-				.anyRequest()
-				.authenticated()// 위에 없는 건 JWT 필요
+
+                .requestMatchers("/api/v1/quick-meetings/enter").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/quick-meetings/*").permitAll()
+                .requestMatchers("/api/v1/quick-meetings/**").hasAnyRole("MEMBER", "GUEST")
+				.anyRequest().hasRole("MEMBER")
 			)
 			.httpBasic(AbstractHttpConfigurer::disable)
 			.formLogin(AbstractHttpConfigurer::disable);
