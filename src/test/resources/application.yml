@@ -32,6 +32,8 @@ jwt:
   refresh-token-expire-days: 7
   cookie-secure: false
   cookie-same-site: "Lax"
+  guest-cookie-name: "guest_access_token"
+  guest-access-token-max-minutes: 180
 
 ai-recommendation:
   base-url: ${AI_RECOMMENDATION_BASE_URL:http://localhost:8000/api/v1}

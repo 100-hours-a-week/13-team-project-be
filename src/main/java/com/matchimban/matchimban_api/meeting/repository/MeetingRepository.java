@@ -2,7 +2,9 @@ package com.matchimban.matchimban_api.meeting.repository;
 
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.repository.projection.MeetingDetailRow;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -68,4 +70,13 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
             @Param("meetingId") Long meetingId,
             @Param("chatMessageId") Long chatMessageId
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        select m
+        from Meeting m
+        where m.inviteCode = :inviteCode
+          and m.isDeleted = false
+    """)
+    Optional<Meeting> findByInviteCodeAndIsDeletedFalseForUpdate(@Param("inviteCode") String inviteCode);
 }

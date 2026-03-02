@@ -18,22 +18,23 @@ import java.util.Optional;
 public interface MeetingParticipantRepository extends JpaRepository<MeetingParticipant, Long> {
 
     @Query("""
-    select new com.matchimban.matchimban_api.meeting.repository.projection.MyMeetingRow(
-        mp.id,
-        m.id,
-        m.title,
-        m.scheduledAt,
-        (select count(mp2.id)
-           from MeetingParticipant mp2
-          where mp2.meeting = m
-            and mp2.status = :activeStatus
-        ),
-        m.targetHeadcount,
+        select new com.matchimban.matchimban_api.meeting.repository.projection.MyMeetingRow(
+            mp.id,
+            m.id,
+            m.title,
+            m.scheduledAt,
+            (select count(mp2.id)
+               from MeetingParticipant mp2
+              where mp2.meeting = m
+                and mp2.status = :activeStatus
+            ),
+            m.targetHeadcount,
             (select v.status
                from Vote v
               where v.meeting = m
                 and v.round = (select max(v2.round) from Vote v2 where v2.meeting = m)
-            )
+            ),
+            m.isQuickMeeting
         )
         from MeetingParticipant mp
         join mp.meeting m
