@@ -69,7 +69,7 @@ public class VoteServiceImpl implements VoteService {
         long activeCount = meetingParticipantRepository.countByMeetingIdAndStatus(
                 meetingId, MeetingParticipant.Status.ACTIVE
         );
-        if (activeCount != meeting.getTargetHeadcount()) {
+        if (!meeting.isQuickMeeting() && activeCount != meeting.getTargetHeadcount()) {
             throw new ApiException(VoteErrorCode.VOTE_CREATE_NOT_READY_HEADCOUNT,
                     "activeCount=" + activeCount + ", target=" + meeting.getTargetHeadcount());
         }
@@ -231,12 +231,16 @@ public class VoteServiceImpl implements VoteService {
 
         voteSubmissionRepository.saveAll(submissions);
 
-        long totalCount = meetingParticipantRepository.countByMeetingIdAndStatus(
+        long activeCount = meetingParticipantRepository.countByMeetingIdAndStatus(
                 meetingId, MeetingParticipant.Status.ACTIVE
         );
         long submittedCount = voteSubmissionRepository.countDistinctParticipantsByVoteId(voteId);
 
-        if (submittedCount >= totalCount) {
+        long threshold = vote.getMeeting().isQuickMeeting()
+                ? vote.getMeeting().getTargetHeadcount()
+                : activeCount;
+
+        if (submittedCount >= threshold) {
             boolean started = voteCountService.tryStartCounting(voteId);
             if (started) {
                 voteCountService.countSync(voteId);
@@ -261,9 +265,13 @@ public class VoteServiceImpl implements VoteService {
             throw new ApiException(VoteErrorCode.VOTE_NOT_FOUND);
         }
 
-        long totalCount = meetingParticipantRepository.countByMeetingIdAndStatus(
+        long activeCount = meetingParticipantRepository.countByMeetingIdAndStatus(
                 meetingId, MeetingParticipant.Status.ACTIVE
         );
+
+        long totalCount = vote.getMeeting().isQuickMeeting()
+                ? vote.getMeeting().getTargetHeadcount()
+                : activeCount;
 
         long submittedCount = voteSubmissionRepository.countDistinctParticipantsByVoteId(voteId);
 
@@ -307,6 +315,10 @@ public class VoteServiceImpl implements VoteService {
 
         Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
                 .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
+
+        if (meeting.isQuickMeeting()) {
+            throw new ApiException(VoteErrorCode.REVOTE_NOT_AVAILABLE, "quick_meeting");
+        }
 
         if (!Objects.equals(meeting.getHostMemberId(), memberId)) {
             throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_HOST);
@@ -361,6 +373,10 @@ public class VoteServiceImpl implements VoteService {
 
         Meeting meeting = meetingRepository.findByIdAndIsDeletedFalse(meetingId)
                 .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
+
+        if (meeting.isQuickMeeting()) {
+            throw new ApiException(VoteErrorCode.REVOTE_NOT_AVAILABLE, "quick_meeting");
+        }
 
         if (!Objects.equals(meeting.getHostMemberId(), memberId)) {
             throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_HOST);

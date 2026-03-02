@@ -16,4 +16,5 @@ public class MyMeetingRow {
     private Long participantCount;
     private Integer targetHeadcount;
     private VoteStatus voteStatus;
+    private boolean quickMeeting;
 }

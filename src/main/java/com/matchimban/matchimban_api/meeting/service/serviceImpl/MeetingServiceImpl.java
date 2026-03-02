@@ -15,6 +15,7 @@ import com.matchimban.matchimban_api.meeting.service.MeetingService;
 import com.matchimban.matchimban_api.member.entity.Member;
 import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
+import com.matchimban.matchimban_api.vote.service.VoteService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -36,6 +37,7 @@ public class MeetingServiceImpl implements MeetingService {
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final VoteRepository voteRepository;
     private final EntityManager entityManager;
+    private final VoteService voteService;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -84,6 +86,10 @@ public class MeetingServiceImpl implements MeetingService {
                         .build();
 
                 meetingParticipantRepository.save(host);
+
+                if (saved.isQuickMeeting()) {
+                    voteService.createVote(saved.getId(), memberId);
+                }
 
                 return new CreateMeetingResponse(saved.getId(), saved.getInviteCode());
 

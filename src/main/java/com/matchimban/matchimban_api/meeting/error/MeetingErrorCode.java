@@ -7,6 +7,8 @@ public enum MeetingErrorCode implements ErrorCode {
 
     // 400
     INVALID_MEETING_TIME(HttpStatus.BAD_REQUEST, "모임/투표 시간 설정이 올바르지 않습니다."),
+    NOT_QUICK_MEETING(HttpStatus.BAD_REQUEST, "퀵 모임이 아닙니다."),
+    INVALID_GUEST_UUID(HttpStatus.BAD_REQUEST, "guestUuid 형식이 올바르지 않습니다."),
 
     // 403
     NOT_ACTIVE_PARTICIPANT(HttpStatus.FORBIDDEN, "모임 참여자만 접근할 수 있습니다."),

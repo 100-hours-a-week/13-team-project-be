@@ -27,6 +27,9 @@ public class MyMeetingSummary {
     @Schema(description = "목표 인원")
     private Integer targetHeadcount;
 
+    @Schema(description = "퀵 모임 여부")
+    private boolean quickMeeting;
+
     @Schema(description = "모임 상태")
     private MeetingStatus meetingStatus;
 }

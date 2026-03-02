@@ -42,6 +42,8 @@ jwt:
   refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS}
   cookie-secure: ${JWT_COOKIE_SECURE}
   cookie-same-site: ${JWT_COOKIE_SAME_SITE}
+  guest-cookie-name: ${JWT_GUEST_COOKIE_NAME}
+  guest-access-token-max-minutes: ${JWT_GUEST_ACCESS_TOKEN_MAX_MINUTES}
 
 csrf:
   cookie-domain: ${CSRF_COOKIE_DOMAIN}
