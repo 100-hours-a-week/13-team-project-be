@@ -14,8 +14,9 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      sentinel:
+        master: mymaster
+        nodes: ${REDIS_SENTINEL_NODES}
       password: ${REDIS_PASSWORD}
 
 kakao:
