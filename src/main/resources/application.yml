@@ -5,6 +5,11 @@ spring:
   profiles:
     active: local
 
+  # cloud:
+  #   aws:
+  #     region:
+  #       static: ${AWS_REGION:ap-northeast-2}
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -16,10 +21,10 @@ spring:
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
 
-  cloud:
-    aws:
-      region:
-        static: ${AWS_REGION}
+  # cloud:
+  #   aws:
+  #     region:
+  #       static: ${AWS_REGION}
 
 management:
   endpoints:
@@ -62,6 +67,12 @@ perf-log:
     - /v3/api-docs
 
 chat:
+  upload:
+    bucket: ${CHAT_IMAGE_BUCKET:}
+    public-base-url: ${CHAT_IMAGE_PUBLIC_BASE_URL:}
+    presign-expires-seconds: ${CHAT_IMAGE_PRESIGN_EXPIRES_SECONDS:120}
+    max-file-size-bytes: ${CHAT_IMAGE_MAX_FILE_SIZE_BYTES:10485760}
+    allowed-content-types: ${CHAT_IMAGE_ALLOWED_CONTENT_TYPES:image/jpeg,image/jpg,image/png,image/webp,image/gif}
   unread:
     window-size: ${CHAT_UNREAD_WINDOW_SIZE:150}
   redis:

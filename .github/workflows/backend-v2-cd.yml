@@ -81,9 +81,8 @@ jobs:
               "",
               "# Deploy (app 서비스만 명시적으로 pull + recreate)",
               "cd ${COMPOSE_DIR}",
-              "docker compose pull app",
+              "docker compose pull -q app",
               "docker compose up -d app",
-              "docker compose up -d",
               "",
               "# 이미지 태그 검증",
               "sleep 3",
@@ -104,8 +103,8 @@ jobs:
               "",
               "# Health check (Spring Boot start_period 고려하여 대기)",
               "echo \"[INFO] Image verified, starting health check...\"",
-              "sleep 20",
-              "if curl -sf --retry 15 --retry-delay 5 --retry-all-errors http://localhost:8080/actuator/health; then",
+              "sleep 30",
+              "if curl -sf --retry 20 --retry-delay 5 --retry-all-errors http://localhost:8080/actuator/health; then",
               "  echo \"[SUCCESS] Deploy complete: ${EXPECTED_IMAGE}\"",
               "  docker image prune -f",
               "  exit 0",
@@ -113,6 +112,10 @@ jobs:
               "",
               "# Rollback on health check failure",
               "echo \"[FAIL] Health check failed\"",
+              "echo \"[DEBUG] Container status before rollback:\"",
+              "docker compose ps || true",
+              "echo \"[DEBUG] backend-app-1 logs (tail 300):\"",
+              "docker logs backend-app-1 --tail 300 || docker compose logs --tail 300 app || true",
               "if [ -n \"${PREV_IMAGE}\" ]; then",
               "  echo \"[ROLLBACK] Reverting to ${PREV_IMAGE}\"",
               "  PREV_TAG=${PREV_IMAGE##*:}",
@@ -180,12 +183,12 @@ jobs:
                 aws ssm get-command-invocation \
                   --command-id "$COMMAND_ID" \
                   --instance-id "$INSTANCE_ID" \
-                  --query "StandardOutputContent" --output text 2>/dev/null | tail -20 || true
+                  --query "StandardOutputContent" --output text 2>/dev/null | tail -300 || true
                 echo "--- stderr ---"
                 aws ssm get-command-invocation \
                   --command-id "$COMMAND_ID" \
                   --instance-id "$INSTANCE_ID" \
-                  --query "StandardErrorContent" --output text || true
+                  --query "StandardErrorContent" --output text 2>/dev/null | tail -200 || true
                 ALL_SUCCESS=false
                 break
               fi
@@ -199,6 +202,14 @@ jobs:
             echo "result=failure" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+
+      - name: Save IMAGE_TAG to Parameter Store
+        run: |
+          aws ssm put-parameter \
+            --name "/moyeobab/spring/${{ env.DEPLOY_ENV }}/IMAGE_TAG" \
+            --value "${{ env.IMAGE_TAG }}" \
+            --type String \
+            --overwrite
 
       - name: Notify Discord
         if: always()
@@ -248,7 +259,7 @@ jobs:
                   {name: "환경", value: $env_label, inline: true},
                   {name: "브랜치", value: $branch, inline: true},
                   {name: "작성자", value: $author, inline: true},
-                  {name: "버전", value: ("`" + $tag + "`"), inline: true},
+                  {name: "이미지 태그", value: ("`" + $tag + "`"), inline: true},
                   {name: "커밋", value: $msg, inline: false},
                   {name: "상세", value: ("[Actions 로그](" + $url + ")"), inline: false}
                 ],

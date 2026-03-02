@@ -102,6 +102,7 @@ public class MenuSelectionConfirmService {
                         SettlementStatus.CALCULATING,
                         SettlementStatus.RESULT_READY
                 );
+                // TODO(notification): 정산 계산 완료 알림. recipients: ACTIVE SettlementParticipant.participant.memberId
             }
         }
 

@@ -51,6 +51,7 @@ public class SettlementCompleteService {
         }
 
         settlementParticipantRepository.bulkSetPaymentDone(settlement.getId(), PaymentStatus.DONE, Instant.now());
+        // TODO(notification): 송금 완료 일괄 처리 알림. recipients: PaymentStatus changed to DONE SettlementParticipant.participant.memberId
 
         meetingSettlementRepository.updateStatusIfCurrent(settlement.getId(), SettlementStatus.RESULT_READY, SettlementStatus.COMPLETED);
 

@@ -349,6 +349,7 @@ public class VoteServiceImpl implements VoteService {
 
         if (v2.getStatus() == VoteStatus.RESERVED) {
             v2.markOpen(now);
+            // TODO(notification): 2차 투표 OPEN 알림. recipients: ACTIVE MeetingParticipant.memberId
             return;
         }
 
@@ -398,6 +399,8 @@ public class VoteServiceImpl implements VoteService {
                 .build();
 
         meetingFinalSelectionRepository.save(fs);
+        // TODO(notification): 최종 선택 확정 알림. recipients: ACTIVE MeetingParticipant.memberId
+        // TODO(notification): 리뷰 작성 요청 알림(+30m). recipients: review not submitted ACTIVE MeetingParticipant.memberId
     }
 
     @Transactional(readOnly = true)
