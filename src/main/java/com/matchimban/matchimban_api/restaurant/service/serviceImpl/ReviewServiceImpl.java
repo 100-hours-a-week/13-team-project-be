@@ -1,6 +1,7 @@
 package com.matchimban.matchimban_api.restaurant.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.api.ApiException;
+import com.matchimban.matchimban_api.global.storage.CdnUrlComposer;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
@@ -30,6 +31,7 @@ public class ReviewServiceImpl implements com.matchimban.matchimban_api.restaura
     private final MeetingFinalSelectionRepository meetingFinalSelectionRepository;
     private final MemberRepository memberRepository;
     private final ReviewRepository reviewRepository;
+    private final CdnUrlComposer cdnUrlComposer;
 
     @Override
     @Transactional
@@ -95,7 +97,7 @@ public class ReviewServiceImpl implements com.matchimban.matchimban_api.restaura
                 toKstLocalDateTime(row.getUpdatedAt()),
                 row.getRestaurantId(),
                 row.getRestaurantName(),
-                row.getRestaurantImageUrl1(),
+                cdnUrlComposer.toPublicUrl(row.getRestaurantImageUrl1()),
                 row.getCategoryName(),
                 row.getCategoryEmoji()
         );

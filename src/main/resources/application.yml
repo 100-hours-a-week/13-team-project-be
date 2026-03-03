@@ -81,6 +81,9 @@ chat:
       unread-counts-updated: ${CHAT_REDIS_CHANNEL_UNREAD_COUNTS_UPDATED:chat:meeting:unread-counts-updated}
 
 app:
+  cdn:
+    base-url: ${APP_CDN_BASE_URL:}
+
   s3:
     bucket: ${APP_S3_BUCKET}
     receipt-prefix: ${APP_S3_RECEIPT_PREFIX}
