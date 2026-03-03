@@ -55,7 +55,7 @@ resilience4j:
         max-wait-duration: 0
 
 ai-recommendation:
-  timeout-ms: 5000
+  timeout-ms: 50000
 
 perf-log:
   enabled: ${PERF_LOG_ENABLED:true}
@@ -81,6 +81,9 @@ chat:
       unread-counts-updated: ${CHAT_REDIS_CHANNEL_UNREAD_COUNTS_UPDATED:chat:meeting:unread-counts-updated}
 
 app:
+  cdn:
+    base-url: ${APP_CDN_BASE_URL:}
+
   s3:
     bucket: ${APP_S3_BUCKET}
     receipt-prefix: ${APP_S3_RECEIPT_PREFIX}

@@ -27,7 +27,7 @@ public interface SettlementParticipantRepository extends JpaRepository<Settlemen
 
     interface SettlementResultRow {
         Long getMeetingParticipantId();
-        Long memberId();
+        Long getMemberId();
         String getNickname();
         String getProfileImageUrl();
         java.math.BigDecimal getAmountDue();
