@@ -1,6 +1,7 @@
 package com.matchimban.matchimban_api.restaurant.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.api.ApiException;
+import com.matchimban.matchimban_api.global.storage.CdnUrlComposer;
 import com.matchimban.matchimban_api.restaurant.dto.response.MyReviewsResponse;
 import com.matchimban.matchimban_api.restaurant.dto.response.ReviewDetailResponse;
 import com.matchimban.matchimban_api.restaurant.dto.view.MyReviewSummary;
@@ -24,6 +25,7 @@ import static com.matchimban.matchimban_api.global.time.TimeKst.toKstLocalDateTi
 public class ReviewReadServiceImpl implements ReviewReadService {
 
     private final ReviewRepository reviewRepository;
+    private final CdnUrlComposer cdnUrlComposer;
 
     @Override
     public MyReviewsResponse getMyReviews(Long memberId, Long cursor, int size) {
@@ -49,7 +51,7 @@ public class ReviewReadServiceImpl implements ReviewReadService {
                         toKstLocalDateTime(r.getCreatedAt()),
                         r.getRestaurantId(),
                         r.getRestaurantName(),
-                        r.getRestaurantImageUrl1(),
+                        cdnUrlComposer.toPublicUrl(r.getRestaurantImageUrl1()),
                         r.getCategoryName(),
                         r.getCategoryEmoji()
                 ))
@@ -73,7 +75,7 @@ public class ReviewReadServiceImpl implements ReviewReadService {
                 toKstLocalDateTime(row.getUpdatedAt()),
                 row.getRestaurantId(),
                 row.getRestaurantName(),
-                row.getRestaurantImageUrl1(),
+                cdnUrlComposer.toPublicUrl(row.getRestaurantImageUrl1()),
                 row.getCategoryName(),
                 row.getCategoryEmoji()
         );
