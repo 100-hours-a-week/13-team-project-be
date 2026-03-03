@@ -55,7 +55,7 @@ resilience4j:
         max-wait-duration: 0
 
 ai-recommendation:
-  timeout-ms: 5000
+  timeout-ms: 50000
 
 perf-log:
   enabled: ${PERF_LOG_ENABLED:true}

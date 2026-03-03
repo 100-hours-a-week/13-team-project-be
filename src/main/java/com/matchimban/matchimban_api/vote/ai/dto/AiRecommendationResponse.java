@@ -33,6 +33,7 @@ public class AiRecommendationResponse {
     @Builder
     public static class Restaurant {
 
+        @JsonProperty("store_id")
         private Long id;
 
         @JsonProperty("distance_m")
