@@ -73,7 +73,6 @@ public class SecurityConfig {
 				.permitAll()
 
                 .requestMatchers("/api/v1/quick-meetings/enter").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/quick-meetings/*").permitAll()
                 .requestMatchers("/api/v1/quick-meetings/**").hasAnyRole("MEMBER", "GUEST")
 				.anyRequest().hasRole("MEMBER")
 			)
