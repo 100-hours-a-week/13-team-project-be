@@ -2,7 +2,7 @@
 # Promtail — Docker 컨테이너 로그 수집 → Loki 전송
 # =============================================================================
 server:
-  http_listen_port: 3100
+  http_listen_port: 9080
   grpc_listen_port: 0
 positions:
   filename: /tmp/positions.yaml
