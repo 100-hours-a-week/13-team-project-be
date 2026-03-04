@@ -23,8 +23,8 @@ public enum MeetingErrorCode implements ErrorCode {
     HOST_CANNOT_LEAVE(HttpStatus.CONFLICT, "호스트는 모임을 탈퇴할 수 없습니다."),
     VOTE_IN_PROGRESS(HttpStatus.CONFLICT, "투표 진행 중에는 모임을 탈퇴할 수 없습니다."),
     MEETING_UPDATE_NOT_ALLOWED(HttpStatus.CONFLICT, "투표가 생성된 이후에는 모임을 수정할 수 없습니다."),
-    INVITE_CODE_CONFLICT(HttpStatus.CONFLICT, "초대 코드 생성에 실패했습니다.");
-
+    INVITE_CODE_CONFLICT(HttpStatus.CONFLICT, "초대 코드 생성에 실패했습니다."),
+    SETTLEMENT_IN_PROGRESS(HttpStatus.CONFLICT, "정산 진행 중에는 모임을 탈퇴할 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;

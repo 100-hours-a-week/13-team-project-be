@@ -11,6 +11,8 @@ import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantReposi
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.meeting.service.MeetingParticipationService;
 import com.matchimban.matchimban_api.member.entity.Member;
+import com.matchimban.matchimban_api.settlement.enums.SettlementStatus;
+import com.matchimban.matchimban_api.settlement.repository.MeetingSettlementRepository;
 import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import jakarta.persistence.EntityManager;
@@ -27,6 +29,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
     private final VoteRepository voteRepository;
     private final ChatSystemMessageService chatSystemMessageService;
     private final EntityManager entityManager;
+    private final MeetingSettlementRepository meetingSettlementRepository;
 
     @Transactional
     public ParticipateMeetingResponse participateMeeting(Long memberId, ParticipateMeetingRequest request) {
@@ -91,6 +94,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
         }
 
         validateLeaveAllowedByVoteState(meetingId);
+        validateLeaveAllowedBySettlementState(meetingId);
 
         participant.leave();
         chatSystemMessageService.publishSystemMessage(participant, buildLeaveSystemMessage(participant.getMember().getNickname()));
@@ -104,6 +108,17 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
                             || state == VoteStatus.OPEN
                             || state == VoteStatus.COUNTING) {
                         throw new ApiException(MeetingErrorCode.VOTE_IN_PROGRESS);
+                    }
+                });
+    }
+
+    private void validateLeaveAllowedBySettlementState(Long meetingId) {
+        meetingSettlementRepository.findByMeetingId(meetingId)
+                .ifPresent(settlement -> {
+                    SettlementStatus status = settlement.getSettlementStatus();
+                    if (status == SettlementStatus.SELECTION_OPEN
+                            || status == SettlementStatus.CALCULATING) {
+                        throw new ApiException(MeetingErrorCode.SETTLEMENT_IN_PROGRESS);
                     }
                 });
     }
