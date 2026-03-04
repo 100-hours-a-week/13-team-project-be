@@ -17,6 +17,13 @@ public interface MeetingFinalSelectionRepository extends JpaRepository<MeetingFi
         select new com.matchimban.matchimban_api.vote.dto.response.FinalSelectionResponse(
             c.id,
             r.id,
+            (
+                select rv.id
+                from Review rv
+                where rv.meeting.id = fs.meeting.id
+                  and rv.member.id = :memberId
+                  and rv.isDeleted = false
+            ),
             r.name,
             r.imageUrl1,
             r.imageUrl2,
@@ -33,5 +40,8 @@ public interface MeetingFinalSelectionRepository extends JpaRepository<MeetingFi
         join r.foodCategory fc
         where fs.meeting.id = :meetingId
     """)
-    Optional<FinalSelectionResponse> findFinalSelectionResponseByMeetingId(@Param("meetingId") Long meetingId);
+    Optional<FinalSelectionResponse> findFinalSelectionResponseByMeetingIdAndMemberId(
+            @Param("meetingId") Long meetingId,
+            @Param("memberId") Long memberId
+    );
 }
