@@ -120,7 +120,7 @@ public class QuickMeetingServiceImpl implements QuickMeetingService {
                 .build();
     }
 
-    private void upsertParticipant(Meeting meeting, Long memberId) {
+    private long upsertParticipant(Meeting meeting, Long memberId) {
         Long meetingId = meeting.getId();
 
         MeetingParticipant existing = meetingParticipantRepository
@@ -128,21 +128,24 @@ public class QuickMeetingServiceImpl implements QuickMeetingService {
                 .orElse(null);
 
         if (existing != null && existing.getStatus() == MeetingParticipant.Status.ACTIVE) {
-            return;
-        }
-
-        long activeCount = meetingParticipantRepository.countByMeetingIdAndStatus(
-                meetingId,
-                MeetingParticipant.Status.ACTIVE
-        );
-
-        if (activeCount >= meeting.getTargetHeadcount()) {
-            throw new ApiException(MeetingErrorCode.MEETING_FULL);
+            return meetingParticipantRepository.countByMeetingIdAndStatus(
+                    meetingId, MeetingParticipant.Status.ACTIVE
+            );
         }
 
         if (existing != null) {
             existing.reactivate();
-            return;
+            return meetingParticipantRepository.countByMeetingIdAndStatus(
+                    meetingId, MeetingParticipant.Status.ACTIVE
+            );
+        }
+
+        long activeCount = meetingParticipantRepository.countByMeetingIdAndStatus(
+                meetingId, MeetingParticipant.Status.ACTIVE
+        );
+
+        if (activeCount >= meeting.getTargetHeadcount()) {
+            throw new ApiException(MeetingErrorCode.MEETING_FULL);
         }
 
         Member memberRef = entityManager.getReference(Member.class, memberId);
@@ -155,5 +158,7 @@ public class QuickMeetingServiceImpl implements QuickMeetingService {
                 .build();
 
         meetingParticipantRepository.save(participant);
+
+        return activeCount + 1;
     }
 }

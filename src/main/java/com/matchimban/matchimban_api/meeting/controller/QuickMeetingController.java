@@ -38,8 +38,9 @@ public class QuickMeetingController {
 
     @GetMapping("/{inviteCode:[A-Za-z0-9]{8}}")
     public ResponseEntity<QuickMeetingDetailResponse> getQuickMeetingDetail(
+            @AuthenticationPrincipal Object principal,
             @PathVariable String inviteCode
     ) {
-        return ResponseEntity.ok(quickMeetingReadService.getQuickMeetingDetailByInviteCode(inviteCode));
+        return ResponseEntity.ok(quickMeetingReadService.getQuickMeetingDetailByInviteCode(principal, inviteCode));
     }
 }
