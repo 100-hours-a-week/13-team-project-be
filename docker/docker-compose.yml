@@ -29,7 +29,8 @@ services:
       - promtail-positions:/tmp
     environment:
       - HOSTNAME=backend-v2
-      - ENV=dev
+      - LOKI_URL=${LOKI_URL}
+      - ENV=${ENV}
     restart: unless-stopped
 
 volumes:
