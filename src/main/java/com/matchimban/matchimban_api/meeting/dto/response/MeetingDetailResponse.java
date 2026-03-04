@@ -2,6 +2,7 @@ package com.matchimban.matchimban_api.meeting.dto.response;
 
 import com.matchimban.matchimban_api.meeting.dto.enums.MeetingStatus;
 import com.matchimban.matchimban_api.meeting.dto.view.MeetingParticipantSummary;
+import com.matchimban.matchimban_api.settlement.enums.SettlementStatus;
 import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -84,5 +85,8 @@ public class MeetingDetailResponse {
 
     @Schema(description = "모임 진행 상태")
     private MeetingStatus meetingStatus;
+
+    @Schema(description = "정산 상태")
+    private SettlementStatus settlementStatus;
 
 }

@@ -460,12 +460,14 @@ public class VoteServiceImpl implements VoteService {
             throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_ACTIVE_PARTICIPANT);
         }
 
-        FinalSelectionResponse raw = meetingFinalSelectionRepository.findFinalSelectionResponseByMeetingId(meetingId)
+        FinalSelectionResponse raw = meetingFinalSelectionRepository
+                .findFinalSelectionResponseByMeetingIdAndMemberId(meetingId, memberId)
                 .orElseThrow(() -> new ApiException(VoteErrorCode.FINAL_SELECTION_NOT_FOUND));
 
         return new FinalSelectionResponse(
                 raw.getCandidateId(),
                 raw.getRestaurantId(),
+                raw.getMyReviewId(),
                 raw.getRestaurantName(),
                 cdnUrlComposer.toPublicUrl(raw.getImageUrl1()),
                 cdnUrlComposer.toPublicUrl(raw.getImageUrl2()),

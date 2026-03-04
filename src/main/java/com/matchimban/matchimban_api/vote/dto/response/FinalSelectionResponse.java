@@ -10,6 +10,7 @@ public class FinalSelectionResponse {
 
     private Long candidateId;
     private Long restaurantId;
+    private Long myReviewId;
 
     private String restaurantName;
     private String imageUrl1;

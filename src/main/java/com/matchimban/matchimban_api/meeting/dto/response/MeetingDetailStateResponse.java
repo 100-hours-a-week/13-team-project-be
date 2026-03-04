@@ -2,6 +2,7 @@ package com.matchimban.matchimban_api.meeting.dto.response;
 
 import com.matchimban.matchimban_api.meeting.dto.enums.MeetingStatus;
 import com.matchimban.matchimban_api.meeting.dto.view.MeetingParticipantSummary;
+import com.matchimban.matchimban_api.settlement.enums.SettlementStatus;
 import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -34,4 +35,7 @@ public class MeetingDetailStateResponse {
 
     @Schema(description = "참여자 목록(READY 상태에서만 포함, 그 외 null)")
     private List<MeetingParticipantSummary> participants;
+
+    @Schema(description = "정산 상태")
+    private SettlementStatus settlementStatus;
 }

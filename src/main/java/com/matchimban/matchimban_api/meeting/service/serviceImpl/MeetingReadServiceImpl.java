@@ -17,6 +17,8 @@ import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.meeting.repository.projection.MeetingDetailRow;
 import com.matchimban.matchimban_api.meeting.repository.projection.MyMeetingRow;
 import com.matchimban.matchimban_api.meeting.service.MeetingReadService;
+import com.matchimban.matchimban_api.settlement.enums.SettlementStatus;
+import com.matchimban.matchimban_api.settlement.repository.MeetingSettlementRepository;
 import com.matchimban.matchimban_api.vote.entity.Vote;
 import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
@@ -45,6 +47,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
     private final ChatMessageRepository chatMessageRepository;
     private final VoteRepository voteRepository;
     private final VoteSubmissionRepository voteSubmissionRepository;
+    private final MeetingSettlementRepository meetingSettlementRepository;
 
     @Override
     public MyMeetingsResponse getMyMeetings(Long memberId, Long cursor, int size) {
@@ -196,6 +199,8 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 ChatMessageType.SYSTEM
         );
 
+        SettlementStatus settlementStatus = resolveSettlementStatus(meetingId);
+
         return new MeetingDetailResponse(
                 row.getMeetingId(),
                 row.getTitle(),
@@ -219,7 +224,8 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 voteState,
                 hasVotedCurrent,
                 row.isFinalSelected(),
-                meetingStatus
+                meetingStatus,
+                settlementStatus
         );
     }
 
@@ -262,6 +268,8 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                     .toList();
         }
 
+        SettlementStatus settlementStatus = resolveSettlementStatus(meetingId);
+
         return new MeetingDetailStateResponse(
                 participantCount,
                 currentVoteId,
@@ -269,7 +277,8 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 hasVotedCurrent,
                 row.isFinalSelected(),
                 meetingStatus,
-                participants
+                participants,
+                settlementStatus
         );
     }
 
@@ -289,5 +298,11 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
 
         return new InviteCodeResponse(inviteCode);
+    }
+
+    private SettlementStatus resolveSettlementStatus(Long meetingId) {
+        return meetingSettlementRepository.findByMeetingId(meetingId)
+                .map(s -> s.getSettlementStatus())
+                .orElse(SettlementStatus.NOT_STARTED);
     }
 }
