@@ -4,30 +4,38 @@
 server:
   http_listen_port: 3100
   grpc_listen_port: 0
-
 positions:
   filename: /tmp/positions.yaml
-
 clients:
-  - url: http://loki.internal.dev.moyeobab.com:3100/loki/api/v1/push
+  - url: ${LOKI_URL}
     external_labels:
       host: ${HOSTNAME}
       env: ${ENV}
-
 scrape_configs:
   - job_name: docker
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 5s
     relabel_configs:
-      # 컨테이너 이름에서 / 제거
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
         target_label: container
-      # Compose 서비스명 라벨
       - source_labels: ['__meta_docker_compose_service']
         target_label: service
-      # promtail 자체 로그 제외
       - source_labels: ['__meta_docker_container_name']
         regex: '.*promtail.*'
         action: drop
+    pipeline_stages:
+      - json:
+          expressions:
+            log: log
+            stream: stream
+      - output:
+          source: log
+      - json:
+          expressions:
+            level: level
+            logger: logger_name
+            traceId: traceId
+      - labels:
+          level:
