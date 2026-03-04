@@ -53,8 +53,8 @@ public class MenuSelectionConfirmService {
         }
 
         List<Long> rawIds = request.selectedItemIds();
-        if (rawIds == null || rawIds.isEmpty()) {
-            throw new ApiException(SettlementErrorCode.EMPTY_SELECTION);
+        if (rawIds == null) {
+            throw new ApiException(SettlementErrorCode.INVALID_ITEM_ID);
         }
         List<Long> itemIds = rawIds.stream().distinct().toList();
 
@@ -72,16 +72,22 @@ public class MenuSelectionConfirmService {
             return new MenuSelectionConfirmResponse(settlement.getId(), settlement.getSettlementStatus(), true);
         }
 
-        List<ReceiptItem> receiptItems = receiptItemRepository.findAllBySettlementIdAndIdIn(settlement.getId(), itemIds);
-        if (receiptItems.size() != itemIds.size()) {
-            throw new ApiException(SettlementErrorCode.INVALID_ITEM_ID);
-        }
+        if (!itemIds.isEmpty()) {
+            List<ReceiptItem> receiptItems =
+                    receiptItemRepository.findAllBySettlementIdAndIdIn(settlement.getId(), itemIds);
 
-        for (ReceiptItem item : receiptItems) {
-            selectionRepository.save(SettlementItemSelection.builder()
-                    .settlementParticipant(sp)
-                    .item(item)
-                    .build());
+            if (receiptItems.size() != itemIds.size()) {
+                throw new ApiException(SettlementErrorCode.INVALID_ITEM_ID);
+            }
+
+            selectionRepository.saveAll(
+                    receiptItems.stream()
+                            .map(item -> SettlementItemSelection.builder()
+                                    .settlementParticipant(sp)
+                                    .item(item)
+                                    .build())
+                            .toList()
+            );
         }
 
         sp.markSelectionConfirmed(Instant.now());
