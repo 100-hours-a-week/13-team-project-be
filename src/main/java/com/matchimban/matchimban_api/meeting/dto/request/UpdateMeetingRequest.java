@@ -15,7 +15,7 @@ public class UpdateMeetingRequest {
 
     @Schema(description = "모임 이름", nullable = true)
     @Size(min = 2, max = 20)
-    @Pattern(regexp = "^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9\\\\s\\\\-_.!,?()\\\\[\\\\]]{2,20}$")
+    @Pattern(regexp = "^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9 \\-_.!,?()\\[\\]]{2,20}$")
     private String title;
 
     @Schema(description = "모임 일시", nullable = true)
