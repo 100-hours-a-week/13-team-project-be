@@ -92,8 +92,11 @@ app:
   ocr:
     base-url: ${RUNPOD_OCR_BASE_URL}
     timeout: 120s
+    health-timeout: 3s
     lease: 150s
     poll-delay: 1000ms
+    initial-retry-delay: 10s
+    max-retry-delay: 60s
     max-attempts: 3
 
 

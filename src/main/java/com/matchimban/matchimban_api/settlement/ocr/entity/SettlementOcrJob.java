@@ -50,6 +50,16 @@ public class SettlementOcrJob {
     @Column(name = "last_error_message", length = 500)
     private String lastErrorMessage;
 
+    @Builder.Default
+    @Column(name = "next_attempt_at", nullable = false)
+    private Instant nextAttemptAt = Instant.now();
+
+    @Column(name = "started_at")
+    private Instant startedAt;
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -58,24 +68,39 @@ public class SettlementOcrJob {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public void markProcessing(String lockedBy, Instant lockUntil) {
+    public void markProcessing(String lockedBy, Instant lockUntil, Instant now) {
         this.status = OcrJobStatus.PROCESSING;
         this.lockedBy = lockedBy;
         this.lockUntil = lockUntil;
         this.attemptCount += 1;
+
+        if (this.startedAt == null) {
+            this.startedAt = now;
+        }
     }
 
-    public void markSucceeded() {
-        this.status = OcrJobStatus.SUCCEEDED;
+    public void requeue(String code, String message, Instant nextAttemptAt) {
+        this.status = OcrJobStatus.PENDING;
+        this.lastErrorCode = code;
+        this.lastErrorMessage = message;
+        this.nextAttemptAt = nextAttemptAt;
         this.lockedBy = null;
         this.lockUntil = null;
     }
 
-    public void markFailed(String code, String message) {
+    public void markSucceeded(Instant now) {
+        this.status = OcrJobStatus.SUCCEEDED;
+        this.lockedBy = null;
+        this.lockUntil = null;
+        this.completedAt = now;
+    }
+
+    public void markFailed(String code, String message, Instant now) {
         this.status = OcrJobStatus.FAILED;
         this.lastErrorCode = code;
         this.lastErrorMessage = message;
         this.lockedBy = null;
         this.lockUntil = null;
+        this.completedAt = now;
     }
 }
