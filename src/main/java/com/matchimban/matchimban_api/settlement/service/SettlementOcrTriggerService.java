@@ -68,6 +68,7 @@ public class SettlementOcrTriggerService {
                 .requestId(requestId)
                 .status(OcrJobStatus.PENDING)
                 .attemptCount(0)
+                .nextAttemptAt(Instant.now())
                 .build();
 
         try {

@@ -14,9 +14,9 @@ public interface SettlementOcrJobRepository extends JpaRepository<SettlementOcrJ
     @Query(value = """
         select *
         from settlement_ocr_jobs
-        where status = 'PENDING'
+        where (status = 'PENDING' and next_attempt_at <= now())
            or (status = 'PROCESSING' and lock_until < now())
-        order by created_at asc, id asc
+        order by next_attempt_at asc, created_at asc, id asc
         for update skip locked
         limit 1
         """, nativeQuery = true)
