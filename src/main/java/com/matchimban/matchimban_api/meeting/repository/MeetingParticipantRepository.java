@@ -125,13 +125,12 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
         update MeetingParticipant mp
-           set mp.lastReadId = case
-               when mp.lastReadId is null or mp.lastReadId < :lastReadId then :lastReadId
-               else mp.lastReadId
-           end
+           set mp.lastReadId = :lastReadId
          where mp.meeting.id = :meetingId
            and mp.member.id = :memberId
            and mp.status = :status
+           and :lastReadId is not null
+           and (mp.lastReadId is null or mp.lastReadId < :lastReadId)
     """)
     int advanceLastReadIdIfGreater(
             @Param("meetingId") Long meetingId,

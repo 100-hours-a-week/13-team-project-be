@@ -40,3 +40,23 @@ out/
 .env
 AGENTS.md
 retros/
+
+# Local load-test monitoring (Prometheus/Grafana)
+perf/monitoring/
+
+# Perf artifacts / secrets (keep scripts/docs in git, exclude generated outputs)
+perf/stomp/node_modules/
+perf/stomp/generated/
+perf/stomp/generated-*/
+perf/stomp/result-*.json
+perf/stomp/report-*.md
+perf/stomp/compare-*.md
+perf/stomp/access-tokens*.txt
+!perf/stomp/access-tokens.example.txt
+perf/k6/result-*.json
+perf/results/
+perf/results/채팅개선사항.md
+perf/logs/
+
+# Temporary: ignore all performance-test files
+perf/
