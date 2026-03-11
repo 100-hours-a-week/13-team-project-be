@@ -35,8 +35,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,6 +61,7 @@ public class DevAuthController {
 	private final FoodCategoryRepository foodCategoryRepository;
 	private final MemberMapper memberMapper;
 	private final OAuthAccountMapper oauthAccountMapper;
+	private final JdbcTemplate jdbcTemplate;
 
 	public DevAuthController(
 		JwtTokenProvider jwtTokenProvider,
@@ -69,7 +72,8 @@ public class DevAuthController {
 		MemberCategoryMappingRepository memberCategoryMappingRepository,
 		FoodCategoryRepository foodCategoryRepository,
 		MemberMapper memberMapper,
-		OAuthAccountMapper oauthAccountMapper
+		OAuthAccountMapper oauthAccountMapper,
+		JdbcTemplate jdbcTemplate
 	) {
 		this.jwtTokenProvider = jwtTokenProvider;
 		this.memberRepository = memberRepository;
@@ -80,6 +84,7 @@ public class DevAuthController {
 		this.foodCategoryRepository = foodCategoryRepository;
 		this.memberMapper = memberMapper;
 		this.oauthAccountMapper = oauthAccountMapper;
+		this.jdbcTemplate = jdbcTemplate;
 	}
 
 	@GetMapping("/access")
@@ -144,6 +149,107 @@ public class DevAuthController {
 		return ResponseEntity.ok()
 			.headers(headers)
 			.body(ApiResult.of("dev_access_issued_by_member", data));
+	}
+
+	@PostMapping("/cleanup/perf")
+	@Transactional
+	@Operation(
+		summary = "개발용 성능테스트 데이터 정리",
+		description = "PerfRoom-* 회의/채팅 메시지와 dev-kakao-* 계정을 정리한다."
+	)
+	@ApiResponse(responseCode = "200", description = "dev_perf_cleanup_done")
+	public ResponseEntity<ApiResult<DevPerfCleanupData>> cleanupPerfData() {
+		final String devProvider = PROVIDER_KAKAO;
+		final String devProviderPrefixLike = DEV_PROVIDER_MEMBER_ID_PREFIX + "%";
+		final String perfMeetingTitleLike = "PerfRoom-%";
+
+		int deletedPerfMessages = jdbcTemplate.update(
+			"""
+				DELETE FROM chat_messages
+				WHERE message LIKE 'PERF_MSG::%%'
+				   OR meeting_id IN (
+					   SELECT id
+					   FROM meetings
+					   WHERE title LIKE ?
+				   )
+			""",
+			perfMeetingTitleLike
+		);
+
+		int softDeletedPerfMeetings = jdbcTemplate.update(
+			"""
+				UPDATE meetings
+				SET is_deleted = TRUE
+				WHERE title LIKE ?
+				  AND is_deleted = FALSE
+			""",
+			perfMeetingTitleLike
+		);
+
+		int softDeletedDevMembers = jdbcTemplate.update(
+			"""
+				UPDATE members
+				SET status = 'DELETED'
+				WHERE id IN (
+					SELECT oa.member_id
+					FROM oauth_accounts oa
+					WHERE oa.provider = ?
+					  AND oa.provider_member_id LIKE ?
+				)
+				  AND status <> 'DELETED'
+			""",
+			devProvider,
+			devProviderPrefixLike
+		);
+
+		int deletedDevMemberAgreements = jdbcTemplate.update(
+			"""
+				DELETE FROM member_agreements
+				WHERE member_id IN (
+					SELECT oa.member_id
+					FROM oauth_accounts oa
+					WHERE oa.provider = ?
+					  AND oa.provider_member_id LIKE ?
+				)
+			""",
+			devProvider,
+			devProviderPrefixLike
+		);
+
+		int deletedDevMemberCategoryMappings = jdbcTemplate.update(
+			"""
+				DELETE FROM member_category_mapping
+				WHERE member_id IN (
+					SELECT oa.member_id
+					FROM oauth_accounts oa
+					WHERE oa.provider = ?
+					  AND oa.provider_member_id LIKE ?
+				)
+			""",
+			devProvider,
+			devProviderPrefixLike
+		);
+
+		int deletedDevOauthAccounts = jdbcTemplate.update(
+			"""
+				DELETE FROM oauth_accounts
+				WHERE provider = ?
+				  AND provider_member_id LIKE ?
+			""",
+			devProvider,
+			devProviderPrefixLike
+		);
+
+		DevPerfCleanupData data = new DevPerfCleanupData(
+			deletedPerfMessages,
+			softDeletedPerfMeetings,
+			softDeletedDevMembers,
+			deletedDevMemberAgreements,
+			deletedDevMemberCategoryMappings,
+			deletedDevOauthAccounts
+		);
+
+		return ResponseEntity.ok(ApiResult.of("dev_perf_cleanup_done", data));
 	}
 
 	private Member getOrCreateDevMember() {
@@ -310,5 +416,15 @@ public class DevAuthController {
 	}
 
 	private record DevAccessData(Long memberId, String nickname, String status) {
+	}
+
+	private record DevPerfCleanupData(
+		int deletedPerfMessages,
+		int softDeletedPerfMeetings,
+		int softDeletedDevMembers,
+		int deletedDevMemberAgreements,
+		int deletedDevMemberCategoryMappings,
+		int deletedDevOauthAccounts
+	) {
 	}
 }

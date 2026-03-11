@@ -55,3 +55,9 @@ chat:
     max-file-size-bytes: ${CHAT_IMAGE_MAX_FILE_SIZE_BYTES:10485760}
     allowed-content-types: ${CHAT_IMAGE_ALLOWED_CONTENT_TYPES:image/jpeg,image/jpg,image/png,image/webp,image/gif}
 
+management:
+  tracing:
+    enabled: ${TRACING_ENABLED:false}
+
+perf-log:
+  log-all-sql: ${PERF_LOG_ALL_SQL:true}
