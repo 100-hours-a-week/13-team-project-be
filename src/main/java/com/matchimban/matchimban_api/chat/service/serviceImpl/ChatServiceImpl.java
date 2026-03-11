@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.chat.service.serviceImpl;
 
+import com.matchimban.matchimban_api.chat.cache.ChatMessageCacheService;
 import com.matchimban.matchimban_api.chat.dto.http.ChatReadPointerUpdatedData;
 import com.matchimban.matchimban_api.chat.dto.ChatSenderDto;
 import com.matchimban.matchimban_api.chat.dto.http.ChatMessageItemDto;
@@ -19,6 +20,7 @@ import com.matchimban.matchimban_api.chat.entity.ChatMessageType;
 import com.matchimban.matchimban_api.chat.error.ChatErrorCode;
 import com.matchimban.matchimban_api.chat.event.ChatMessageCreatedInternalEvent;
 import com.matchimban.matchimban_api.chat.event.ChatUnreadCountsRefreshInternalEvent;
+import com.matchimban.matchimban_api.chat.metrics.ChatMetricsRecorder;
 import com.matchimban.matchimban_api.chat.redis.ChatRedisPublisher;
 import com.matchimban.matchimban_api.chat.repository.ChatMessageRepository;
 import com.matchimban.matchimban_api.chat.repository.projection.ChatMessageRow;
@@ -57,9 +59,11 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 	private final ChatMessageRepository chatMessageRepository;
 	private final MeetingParticipantRepository meetingParticipantRepository;
 	private final MeetingRepository meetingRepository;
+	private final ChatMessageCacheService chatMessageCacheService;
 	private final ChatRedisPublisher chatRedisPublisher;
 	private final StringRedisTemplate stringRedisTemplate;
 	private final ApplicationEventPublisher applicationEventPublisher;
+	private final ChatMetricsRecorder chatMetricsRecorder;
 
 	@Value("${chat.unread.window-size:50}")
 	private int unreadWindowSize;
@@ -68,8 +72,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 	public ChatMessagesLoadedData getMessages(Long memberId, Long meetingId, Long cursor, int size) {
 		assertActiveParticipant(memberId, meetingId);
 
-		Pageable pageable = PageRequest.of(0, size + 1);
-		List<ChatMessageRow> rows = chatMessageRepository.findPageRows(meetingId, cursor, pageable);
+		List<ChatMessageRow> rows = loadMessageRows(meetingId, cursor, size);
 
 		boolean hasNext = rows.size() > size;
 		List<ChatMessageRow> pageRows = hasNext ? rows.subList(0, size) : rows;
@@ -89,9 +92,39 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 		);
 	}
 
+	private List<ChatMessageRow> loadMessageRows(Long meetingId, Long cursor, int size) {
+		int fetchSize = size + 1;
+		if (cursor != null || !chatMessageCacheService.isEnabled()) {
+			return queryMessageRows(meetingId, cursor, fetchSize);
+		}
+
+		boolean cacheEligible = chatMessageCacheService.recordTrafficAndIsCacheEligible(meetingId);
+		if (!cacheEligible) {
+			return queryMessageRows(meetingId, cursor, fetchSize);
+		}
+
+		Optional<List<ChatMessageRow>> cachedRows = chatMessageCacheService.getRecentMessages(meetingId, fetchSize);
+		if (cachedRows.isPresent()) {
+			return cachedRows.get();
+		}
+
+		int cacheWindowFetchSize = Math.max(fetchSize, chatMessageCacheService.recentWindowSize() + 1);
+		List<ChatMessageRow> dbRows = queryMessageRows(meetingId, null, cacheWindowFetchSize);
+		if (!dbRows.isEmpty()) {
+			chatMessageCacheService.replaceRecentMessages(meetingId, dbRows);
+		}
+		return dbRows;
+	}
+
+	private List<ChatMessageRow> queryMessageRows(Long meetingId, Long cursor, int fetchSize) {
+		Pageable pageable = PageRequest.of(0, fetchSize);
+		return chatMessageRepository.findPageRows(meetingId, cursor, pageable);
+	}
+
 	@Override
 	@Transactional
 	public ChatMessageSendAckEvent sendMessage(Long memberId, Long meetingId, ChatSendMessageRequest request) {
+		chatMetricsRecorder.recordSendAttempt();
 		MeetingParticipant participant = meetingParticipantRepository
 			.findByMeetingIdAndMemberIdAndStatusFetchMember(
 				meetingId,
@@ -111,6 +144,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 					clientMessageId
 				);
 			if (existing.isPresent()) {
+				chatMetricsRecorder.recordSendAccepted(true);
 				return toAcceptedAck(meetingId, clientMessageId, existing.get());
 			}
 		}
@@ -132,6 +166,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 						clientMessageId
 					)
 					.orElseThrow(() -> ex);
+				chatMetricsRecorder.recordSendAccepted(true);
 				return toAcceptedAck(meetingId, clientMessageId, existing);
 			}
 			throw ex;
@@ -140,6 +175,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 		publishMessageCreated(saved, participant);
 		participant.advanceLastReadId(saved.getId());
 		scheduleUnreadCountsRefresh(meetingId);
+		chatMetricsRecorder.recordSendAccepted(false);
 		return toAcceptedAck(meetingId, clientMessageId, saved);
 	}
 
@@ -161,6 +197,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 		if (updatedRows > 0) {
 			scheduleUnreadCountsRefresh(meetingId);
 		}
+		chatMetricsRecorder.recordReadPointerUpdate(updatedRows > 0);
 
 		return new ChatReadPointerUpdatedData(meetingId, lastReadMessageId, updatedRows > 0);
 	}
@@ -297,6 +334,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 			.message(content)
 			.build());
 		meetingRepository.updateLastChatIdIfGreater(participant.getMeeting().getId(), saved.getId());
+		chatMetricsRecorder.recordMessagePersisted(type);
 		return saved;
 	}
 
