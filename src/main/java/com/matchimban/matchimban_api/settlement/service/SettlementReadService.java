@@ -62,7 +62,7 @@ public class SettlementReadService {
         var rows = settlementParticipantRepository.findResultRows(settlement.getId()).stream()
                 .map(r -> new SettlementResultResponse.Row(
                         r.getMeetingParticipantId(),
-                        r.memberId(),
+                        r.getMemberId(),
                         r.getNickname(),
                         r.getProfileImageUrl(),
                         r.getAmountDue(),

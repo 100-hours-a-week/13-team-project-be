@@ -2,6 +2,7 @@ package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.global.error.code.CommonErrorCode;
+import com.matchimban.matchimban_api.global.storage.CdnUrlComposer;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
@@ -48,7 +49,7 @@ public class VoteServiceImpl implements VoteService {
     private final MeetingRestaurantCandidateRepository meetingRestaurantCandidateRepository;
     private final VoteCountService voteCountService;
     private final MeetingFinalSelectionRepository meetingFinalSelectionRepository;
-
+    private final CdnUrlComposer cdnUrlComposer;
 
     @Transactional
     public CreateVoteResponse createVote(Long meetingId, Long memberId) {
@@ -167,7 +168,22 @@ public class VoteServiceImpl implements VoteService {
             throw new ApiException(VoteErrorCode.VOTE_CANDIDATES_NOT_READY);
         }
 
-        return new VoteCandidatesResponse(items);
+        List<VoteCandidatesResponse.Candidate> mapped = items.stream()
+                .map(c -> new VoteCandidatesResponse.Candidate(
+                        c.getCandidateId(),
+                        c.getRestaurantName(),
+                        cdnUrlComposer.toPublicUrl(c.getImageUrl1()),
+                        cdnUrlComposer.toPublicUrl(c.getImageUrl2()),
+                        cdnUrlComposer.toPublicUrl(c.getImageUrl3()),
+                        c.getDistanceM(),
+                        c.getRating(),
+                        c.getCategoryName(),
+                        c.getRoadAddress(),
+                        c.getJibunAddress()
+                ))
+                .toList();
+
+        return new VoteCandidatesResponse(mapped);
     }
 
     @Transactional
@@ -306,8 +322,23 @@ public class VoteServiceImpl implements VoteService {
             throw new ApiException(CommonErrorCode.INTERNAL_SERVER_ERROR, "top3_missing");
         }
 
+        List<VoteResultsResponse.Item> mapped = items.stream()
+                .map(i -> new VoteResultsResponse.Item(
+                        i.getCandidateId(),
+                        i.getRank(),
+                        i.getRestaurantName(),
+                        cdnUrlComposer.toPublicUrl(i.getImageUrl1()),
+                        i.getCategoryName(),
+                        i.getRating(),
+                        i.getLikeCount(),
+                        i.getDistanceM(),
+                        i.getRoadAddress(),
+                        i.getJibunAddress()
+                ))
+                .toList();
+
         Long hostMemberId = vote.getMeeting().getHostMemberId();
-        return new VoteResultsResponse(items, hostMemberId);
+        return new VoteResultsResponse(mapped, hostMemberId);
     }
 
     @Transactional
@@ -429,9 +460,23 @@ public class VoteServiceImpl implements VoteService {
             throw new ApiException(VoteErrorCode.FORBIDDEN_NOT_ACTIVE_PARTICIPANT);
         }
 
-        return meetingFinalSelectionRepository.findFinalSelectionResponseByMeetingId(meetingId)
+        FinalSelectionResponse raw = meetingFinalSelectionRepository
+                .findFinalSelectionResponseByMeetingIdAndMemberId(meetingId, memberId)
                 .orElseThrow(() -> new ApiException(VoteErrorCode.FINAL_SELECTION_NOT_FOUND));
+
+        return new FinalSelectionResponse(
+                raw.getCandidateId(),
+                raw.getRestaurantId(),
+                raw.getMyReviewId(),
+                raw.getRestaurantName(),
+                cdnUrlComposer.toPublicUrl(raw.getImageUrl1()),
+                cdnUrlComposer.toPublicUrl(raw.getImageUrl2()),
+                cdnUrlComposer.toPublicUrl(raw.getImageUrl3()),
+                raw.getCategoryName(),
+                raw.getRating(),
+                raw.getDistanceM(),
+                raw.getRoadAddress(),
+                raw.getJibunAddress()
+        );
     }
-
-
 }

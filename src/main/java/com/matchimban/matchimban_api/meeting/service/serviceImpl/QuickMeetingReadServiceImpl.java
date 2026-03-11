@@ -1,5 +1,7 @@
 package com.matchimban.matchimban_api.meeting.service.serviceImpl;
 
+import com.matchimban.matchimban_api.auth.jwt.GuestPrincipal;
+import com.matchimban.matchimban_api.auth.jwt.MemberPrincipal;
 import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.meeting.dto.response.QuickMeetingDetailResponse;
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
@@ -27,7 +29,7 @@ public class QuickMeetingReadServiceImpl implements QuickMeetingReadService {
 
     @Override
     @Transactional(readOnly = true)
-    public QuickMeetingDetailResponse getQuickMeetingDetailByInviteCode(String inviteCode) {
+    public QuickMeetingDetailResponse getQuickMeetingDetailByInviteCode(Object principal, String inviteCode) {
 
         Meeting meeting = meetingRepository.findByInviteCodeAndIsDeletedFalse(inviteCode)
                 .orElseThrow(() -> new ApiException(MeetingErrorCode.MEETING_NOT_FOUND));
@@ -35,6 +37,8 @@ public class QuickMeetingReadServiceImpl implements QuickMeetingReadService {
         if (!meeting.isQuickMeeting()) {
             throw new ApiException(MeetingErrorCode.NOT_QUICK_MEETING);
         }
+
+        requireActiveParticipantScope(principal, meeting.getId());
 
         long participantCount = meetingParticipantRepository.countByMeetingIdAndStatus(
                 meeting.getId(),
@@ -58,6 +62,29 @@ public class QuickMeetingReadServiceImpl implements QuickMeetingReadService {
                 voteStatus,
                 meeting.getHostMemberId()
         );
+    }
+
+    private void requireActiveParticipantScope(Object principal, Long meetingId) {
+        Long memberId;
+
+        if (principal instanceof GuestPrincipal gp) {
+            if (gp.meetingId() == null || !meetingId.equals(gp.meetingId())) {
+                throw new ApiException(MeetingErrorCode.NOT_ACTIVE_PARTICIPANT);
+            }
+            memberId = gp.memberId();
+        } else if (principal instanceof MemberPrincipal mp) {
+            memberId = mp.memberId();
+        } else {
+            throw new ApiException(MeetingErrorCode.NOT_ACTIVE_PARTICIPANT);
+        }
+
+        boolean active = meetingParticipantRepository.existsByMeetingIdAndMemberIdAndStatus(
+                meetingId, memberId, MeetingParticipant.Status.ACTIVE
+        );
+
+        if (!active) {
+            throw new ApiException(MeetingErrorCode.NOT_ACTIVE_PARTICIPANT);
+        }
     }
 
     private Vote resolveEntryVote(List<Vote> votes) {

@@ -15,7 +15,7 @@ public class CreateMeetingRequest {
     @Schema(description = "모임 이름")
     @NotBlank
     @Size(min=2, max=20)
-    @Pattern(regexp = "^[가-힣A-Za-z0-9\\s\\-_.!,?()\\[\\]]{2,20}$")
+    @Pattern(regexp = "^[가-힣ㄱ-ㅎㅏ-ㅣA-Za-z0-9 \\-_.!,?()\\[\\]]{2,20}$")
     private String title;
 
     @Schema(description = "모임 일시")
@@ -42,7 +42,7 @@ public class CreateMeetingRequest {
     private BigDecimal locationLng;
 
     @Schema(description = "목표 인원")
-    @Min(2)
+    @Min(1)
     private int targetHeadcount;
 
     @Schema(description = "탐색 범위")

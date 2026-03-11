@@ -21,6 +21,7 @@ services:
   promtail:
     image: grafana/promtail:3.4.2
     network_mode: host
+    env_file: .env
     command: -config.file=/etc/promtail/config.yml -config.expand-env=true
     volumes:
       - ./promtail.yml:/etc/promtail/config.yml:ro
@@ -29,7 +30,8 @@ services:
       - promtail-positions:/tmp
     environment:
       - HOSTNAME=backend-v2
-      - ENV=dev
+      - LOKI_URL=${LOKI_URL}
+      - ENV=${ENV}
     restart: unless-stopped
 
 volumes:
