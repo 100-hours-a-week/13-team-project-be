@@ -104,6 +104,10 @@ chat:
         only-hot-rooms: ${CHAT_CACHE_MESSAGES_RECENT_ONLY_HOT_ROOMS:false}
         hot-threshold-per-window: ${CHAT_CACHE_MESSAGES_RECENT_HOT_THRESHOLD_PER_WINDOW:120}
         traffic-window-seconds: ${CHAT_CACHE_MESSAGES_RECENT_TRAFFIC_WINDOW_SECONDS:60}
+        lock-enabled: ${CHAT_CACHE_MESSAGES_RECENT_LOCK_ENABLED:true}
+        lock-ttl-millis: ${CHAT_CACHE_MESSAGES_RECENT_LOCK_TTL_MILLIS:2000}
+        lock-retry-count: ${CHAT_CACHE_MESSAGES_RECENT_LOCK_RETRY_COUNT:15}
+        lock-retry-backoff-millis: ${CHAT_CACHE_MESSAGES_RECENT_LOCK_RETRY_BACKOFF_MILLIS:5}
       latest-id:
         ttl-seconds: ${CHAT_CACHE_MESSAGES_LATEST_ID_TTL_SECONDS:120}
   redis:

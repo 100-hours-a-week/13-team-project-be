@@ -7,11 +7,14 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -23,6 +26,11 @@ public class ChatMessageCacheService {
 	private static final String RECENT_MESSAGES_VERSIONED_KEY_PREFIX = "chat:meeting:messages:recent:";
 	private static final String RECENT_MESSAGES_TRAFFIC_KEY_PREFIX = "chat:meeting:messages:traffic:";
 	private static final String LATEST_MESSAGE_ID_KEY_PREFIX = "chat:meeting:latest-message-id:";
+	private static final String RECENT_MESSAGES_LOCK_KEY_PREFIX = "chat:meeting:messages:lock:";
+	private static final RedisScript<Long> RELEASE_LOCK_SCRIPT = new DefaultRedisScript<>(
+		"if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end",
+		Long.class
+	);
 
 	private final StringRedisTemplate stringRedisTemplate;
 	private final ObjectMapper objectMapper;
@@ -54,6 +62,18 @@ public class ChatMessageCacheService {
 
 	@Value("${chat.cache.messages.latest-id.ttl-seconds:120}")
 	private long latestMessageIdTtlSeconds;
+
+	@Value("${chat.cache.messages.recent.lock-enabled:true}")
+	private boolean lockEnabled;
+
+	@Value("${chat.cache.messages.recent.lock-ttl-millis:2000}")
+	private long lockTtlMillis;
+
+	@Value("${chat.cache.messages.recent.lock-retry-count:15}")
+	private int lockRetryCount;
+
+	@Value("${chat.cache.messages.recent.lock-retry-backoff-millis:5}")
+	private long lockRetryBackoffMillis;
 
 	public boolean isEnabled() {
 		return enabled;
@@ -107,6 +127,18 @@ public class ChatMessageCacheService {
 			return;
 		}
 
+		withRoomLock(meetingId, () -> doReplaceRecentMessages(meetingId, rowsDesc));
+	}
+
+	public void appendRecentMessage(Long meetingId, ChatMessageRow row) {
+		if (!enabled || meetingId == null || row == null || row.messageId() == null) {
+			return;
+		}
+
+		withRoomLock(meetingId, () -> doAppendRecentMessage(meetingId, row));
+	}
+
+	private void doReplaceRecentMessages(Long meetingId, List<ChatMessageRow> rowsDesc) {
 		try {
 			Long previousVersion = getCurrentVersion(meetingId).orElse(null);
 			Long nextVersion = stringRedisTemplate.opsForValue().increment(recentMessagesVersionKey(meetingId));
@@ -121,11 +153,7 @@ public class ChatMessageCacheService {
 		}
 	}
 
-	public void appendRecentMessage(Long meetingId, ChatMessageRow row) {
-		if (!enabled || meetingId == null || row == null || row.messageId() == null) {
-			return;
-		}
-
+	private void doAppendRecentMessage(Long meetingId, ChatMessageRow row) {
 		try {
 			Long previousVersion = getCurrentVersion(meetingId).orElse(null);
 			List<ChatMessageRow> previous = loadPreviousSnapshot(meetingId, previousVersion);
@@ -139,6 +167,61 @@ public class ChatMessageCacheService {
 			cacheLatestMessageId(meetingId, row.messageId());
 		} catch (Exception ex) {
 			log.warn("Failed to append chat message cache. meetingId={} messageId={}", meetingId, row.messageId(), ex);
+		}
+	}
+
+	private void withRoomLock(Long meetingId, Runnable action) {
+		if (!lockEnabled) {
+			action.run();
+			return;
+		}
+
+		String lockKey = recentMessagesLockKey(meetingId);
+		String lockToken = UUID.randomUUID().toString();
+		boolean acquired = tryAcquireLock(lockKey, lockToken);
+		if (!acquired) {
+			log.warn("Skipped chat cache update due to lock contention. meetingId={}", meetingId);
+			return;
+		}
+
+		try {
+			action.run();
+		} finally {
+			releaseLock(lockKey, lockToken);
+		}
+	}
+
+	private boolean tryAcquireLock(String lockKey, String lockToken) {
+		long ttl = Math.max(100L, lockTtlMillis);
+		int retries = Math.max(0, lockRetryCount);
+		long backoff = Math.max(1L, lockRetryBackoffMillis);
+
+		for (int i = 0; i <= retries; i++) {
+			Boolean acquired = stringRedisTemplate.opsForValue()
+				.setIfAbsent(lockKey, lockToken, Duration.ofMillis(ttl));
+			if (Boolean.TRUE.equals(acquired)) {
+				return true;
+			}
+			if (i < retries) {
+				sleepQuietly(backoff);
+			}
+		}
+		return false;
+	}
+
+	private void releaseLock(String lockKey, String lockToken) {
+		try {
+			stringRedisTemplate.execute(RELEASE_LOCK_SCRIPT, List.of(lockKey), lockToken);
+		} catch (Exception ex) {
+			log.warn("Failed to release chat cache lock. lockKey={}", lockKey, ex);
+		}
+	}
+
+	private void sleepQuietly(long millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (InterruptedException ex) {
+			Thread.currentThread().interrupt();
 		}
 	}
 
@@ -279,5 +362,9 @@ public class ChatMessageCacheService {
 
 	private String latestMessageIdKey(Long meetingId) {
 		return LATEST_MESSAGE_ID_KEY_PREFIX + meetingId;
+	}
+
+	private String recentMessagesLockKey(Long meetingId) {
+		return RECENT_MESSAGES_LOCK_KEY_PREFIX + meetingId;
 	}
 }
