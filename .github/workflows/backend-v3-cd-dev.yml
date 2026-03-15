@@ -105,7 +105,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: 100-hours-a-week/13-team-project-cloud
-          token: ${{ secrets.ARGOCD_DEPLOY_TOKEN }}
+          token: ${{ secrets.CLOUD_REPO_PAT }}
           ref: main
 
       - name: Setup Kustomize
