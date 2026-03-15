@@ -1,5 +1,0 @@
-# Keep design markdown files in this folder, ignore all other local artifacts.
-*
-!.gitignore
-!**/
-!**/*.md
