@@ -1,0 +1,53 @@
+name: BE V3 CI Pipeline
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: be-v3-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: gradle
+
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
+      - name: Build and Verify (Lint, Test)
+        env:
+          SPRING_PROFILES_ACTIVE: test
+        run: ./gradlew build -x bootJar --no-daemon --parallel
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: '**/build/test-results/test/TEST-*.xml'
+
+      - name: Upload CI Reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: be-v3-ci-reports-${{ github.run_number }}
+          path: build/reports/
+          retention-days: 14
