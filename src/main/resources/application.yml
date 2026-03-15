@@ -68,6 +68,17 @@ resilience4j:
 ai-recommendation:
   timeout-ms: 50000
 
+rag-chat:
+  base-url: ${RAG_CHAT_BASE_URL:http://localhost:8001}
+  timeout-ms: ${RAG_CHAT_TIMEOUT_MS:10000}
+  connect-timeout-ms: ${RAG_CHAT_CONNECT_TIMEOUT_MS:2000}
+  read-timeout-ms: ${RAG_CHAT_READ_TIMEOUT_MS:10000}
+  paths:
+    ask: ${RAG_CHAT_PATH_ASK:/RAGchat}
+    reset: ${RAG_CHAT_PATH_RESET:/RAGchat/{user_id}}
+    history: ${RAG_CHAT_PATH_HISTORY:/history/{user_id}}
+    health: ${RAG_CHAT_PATH_HEALTH:/health}
+
 perf-log:
   enabled: ${PERF_LOG_ENABLED:true}
   slow-request-ms: ${PERF_LOG_SLOW_REQUEST_MS:500}
