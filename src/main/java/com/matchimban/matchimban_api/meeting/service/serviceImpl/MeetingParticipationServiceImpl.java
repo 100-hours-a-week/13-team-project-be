@@ -11,14 +11,19 @@ import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantReposi
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import com.matchimban.matchimban_api.meeting.service.MeetingParticipationService;
 import com.matchimban.matchimban_api.member.entity.Member;
+import com.matchimban.matchimban_api.notification.entity.NotificationType;
+import com.matchimban.matchimban_api.notification.event.NotificationRequestedEvent;
 import com.matchimban.matchimban_api.settlement.enums.SettlementStatus;
 import com.matchimban.matchimban_api.settlement.repository.MeetingSettlementRepository;
 import com.matchimban.matchimban_api.vote.entity.enums.VoteStatus;
 import com.matchimban.matchimban_api.vote.repository.VoteRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +35,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
     private final ChatSystemMessageService chatSystemMessageService;
     private final EntityManager entityManager;
     private final MeetingSettlementRepository meetingSettlementRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public ParticipateMeetingResponse participateMeeting(Long memberId, ParticipateMeetingRequest request) {
@@ -57,7 +63,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
 
         if (existing != null) {
             existing.reactivate();
-            // TODO(notification): 새 모임원 참여 알림. recipients: ACTIVE MeetingParticipant.memberId (exclude self, optionally host only)
+            publishMemberJoinedNotification(meetingId, existing.getId(), memberId, existing.getMember().getNickname());
             chatSystemMessageService.publishSystemMessage(existing, buildJoinSystemMessage(existing.getMember().getNickname()));
             return new ParticipateMeetingResponse(meetingId);
         }
@@ -72,7 +78,7 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
                 .build();
 
         meetingParticipantRepository.save(participant);
-        // TODO(notification): 새 모임원 참여 알림. recipients: ACTIVE MeetingParticipant.memberId (exclude self, optionally host only)
+        publishMemberJoinedNotification(meetingId, participant.getId(), memberId, memberRef.getNickname());
         chatSystemMessageService.publishSystemMessage(participant, buildJoinSystemMessage(memberRef.getNickname()));
         return new ParticipateMeetingResponse(meetingId);
     }
@@ -136,5 +142,28 @@ public class MeetingParticipationServiceImpl implements MeetingParticipationServ
             return "사용자";
         }
         return nickname;
+    }
+
+    private void publishMemberJoinedNotification(Long meetingId, Long participantId, Long joinedMemberId, String nickname) {
+        List<Long> recipients = meetingParticipantRepository.findActiveMemberIds(meetingId).stream()
+                .filter(memberId -> !memberId.equals(joinedMemberId))
+                .toList();
+
+        if (recipients.isEmpty()) {
+            return;
+        }
+
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                NotificationType.MEETING_MEMBER_JOINED,
+                "모임 참여 알림",
+                safeNickname(nickname) + "님이 모임에 참여했어요.",
+                "MEETING",
+                meetingId,
+                participantId,
+                "/meetings/" + meetingId,
+                "MEETING_MEMBER_JOINED:" + meetingId + ":" + participantId,
+                null,
+                recipients
+        ));
     }
 }

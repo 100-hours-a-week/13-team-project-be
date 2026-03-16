@@ -8,6 +8,8 @@ import com.matchimban.matchimban_api.member.entity.MemberCategoryMapping;
 import com.matchimban.matchimban_api.member.entity.enums.MemberCategoryRelationType;
 import com.matchimban.matchimban_api.member.repository.FoodCategoryRepository;
 import com.matchimban.matchimban_api.member.repository.MemberCategoryMappingRepository;
+import com.matchimban.matchimban_api.notification.entity.NotificationType;
+import com.matchimban.matchimban_api.notification.event.NotificationRequestedEvent;
 import com.matchimban.matchimban_api.restaurant.entity.Restaurant;
 import com.matchimban.matchimban_api.restaurant.repository.RestaurantRepository;
 import com.matchimban.matchimban_api.restaurant.repository.ReviewRepository;
@@ -24,6 +26,7 @@ import com.matchimban.matchimban_api.vote.service.VoteFailureService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +60,7 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
     private final MeetingRestaurantCandidateRepository candidateRepository;
 
     private final VoteFailureService voteFailureService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -179,7 +183,7 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
 
             Instant now = Instant.now();
             v1.markOpen(now);
-            // TODO(notification): 1차 투표 OPEN 알림. recipients: ACTIVE MeetingParticipant.memberId
+            publishRound1OpenNotification(meetingId, v1.getId(), memberIds);
             v2.markReserved(now);
 
             LOG.info("Vote candidates generated. meetingId={}, v1Saved={}, v2Saved={}", meetingId, savedR1, savedR2);
@@ -255,5 +259,20 @@ public class VoteCandidateAsyncServiceImpl implements VoteCandidateAsyncService 
 
         candidateRepository.saveAll(candidates);
         return candidates.size();
+    }
+
+    private void publishRound1OpenNotification(Long meetingId, Long voteId, List<Long> recipientMemberIds) {
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                NotificationType.VOTE_ROUND1_OPEN,
+                "1차 투표 시작",
+                "1차 투표가 열렸어요. 지금 바로 참여해 주세요.",
+                "VOTE",
+                meetingId,
+                voteId,
+                "/meetings/" + meetingId + "/votes/" + voteId,
+                "VOTE_ROUND1_OPEN:" + meetingId + ":" + voteId,
+                null,
+                recipientMemberIds
+        ));
     }
 }
