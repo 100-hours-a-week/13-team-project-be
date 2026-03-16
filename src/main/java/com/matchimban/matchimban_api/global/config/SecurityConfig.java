@@ -70,6 +70,7 @@ public class SecurityConfig {
 					"/health",
 					"/api/v1/rag-chat/health",
 					"/actuator/health",
+					"/actuator/health/**",
 					"/actuator/prometheus"
 				)
 				.permitAll()
