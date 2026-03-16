@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationQueryService {
 
     private static final Instant INITIAL_CURSOR_CREATED_AT = Instant.parse("9999-12-31T23:59:59Z");
-    private static final long INITIAL_CURSOR_ID = Long.MAX_VALUE;
+    private static final Long INITIAL_CURSOR_ID = Long.MAX_VALUE;
 
     private final NotificationRepository notificationRepository;
 
