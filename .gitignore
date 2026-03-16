@@ -39,7 +39,9 @@ out/
 ### Env ###
 .env
 AGENTS.md
+Skills/
 retros/
+docs/
 
 # Local load-test monitoring (Prometheus/Grafana)
 perf/monitoring/

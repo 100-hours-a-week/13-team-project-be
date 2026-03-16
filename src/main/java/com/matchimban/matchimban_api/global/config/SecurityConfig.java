@@ -54,7 +54,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                .requestMatchers(
+				.requestMatchers(
 					"/swagger-ui/**",
 					"/v3/api-docs/**",
 					"/swagger-ui.html",
@@ -67,7 +67,10 @@ public class SecurityConfig {
 					"/api/dev/**",
 					"/api/csrf",
 					"/api/ping",
+					"/health",
+					"/api/v1/rag-chat/health",
 					"/actuator/health",
+					"/actuator/health/**",
 					"/actuator/prometheus"
 				)
 				.permitAll()

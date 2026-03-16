@@ -16,7 +16,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -68,6 +68,17 @@ resilience4j:
 ai-recommendation:
   timeout-ms: 50000
 
+rag-chat:
+  base-url: ${RAG_CHAT_BASE_URL:http://localhost:8001}
+  timeout-ms: ${RAG_CHAT_TIMEOUT_MS:10000}
+  connect-timeout-ms: ${RAG_CHAT_CONNECT_TIMEOUT_MS:2000}
+  read-timeout-ms: ${RAG_CHAT_READ_TIMEOUT_MS:10000}
+  paths:
+    ask: ${RAG_CHAT_PATH_ASK:/RAGchat}
+    reset: ${RAG_CHAT_PATH_RESET:/RAGchat/{user_id}}
+    history: ${RAG_CHAT_PATH_HISTORY:/history/{user_id}}
+    health: ${RAG_CHAT_PATH_HEALTH:/health}
+
 perf-log:
   enabled: ${PERF_LOG_ENABLED:true}
   slow-request-ms: ${PERF_LOG_SLOW_REQUEST_MS:500}
@@ -114,6 +125,33 @@ chat:
     channel:
       message-created: ${CHAT_REDIS_CHANNEL_MESSAGE_CREATED:chat:meeting:message-created}
       unread-counts-updated: ${CHAT_REDIS_CHANNEL_UNREAD_COUNTS_UPDATED:chat:meeting:unread-counts-updated}
+
+notification:
+  dispatch:
+    enabled: ${NOTIFICATION_DISPATCH_ENABLED:true}
+    poll-delay: ${NOTIFICATION_DISPATCH_POLL_DELAY:2000ms}
+    batch-size: ${NOTIFICATION_DISPATCH_BATCH_SIZE:20}
+    stale-lock-threshold: ${NOTIFICATION_DISPATCH_STALE_LOCK_THRESHOLD:2m}
+  schedule:
+    enabled: ${NOTIFICATION_SCHEDULE_ENABLED:true}
+    poll-delay: ${NOTIFICATION_SCHEDULE_POLL_DELAY:2000ms}
+    batch-size: ${NOTIFICATION_SCHEDULE_BATCH_SIZE:20}
+    stale-lock-threshold: ${NOTIFICATION_SCHEDULE_STALE_LOCK_THRESHOLD:2m}
+  retry:
+    max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:6}
+  retention:
+    cleanup-cron: ${NOTIFICATION_RETENTION_CLEANUP_CRON:0 20 4 * * *}
+    enabled: ${NOTIFICATION_RETENTION_ENABLED:true}
+    notification-deleted-retention: ${NOTIFICATION_DELETED_RETENTION:30d}
+    notification-created-retention: ${NOTIFICATION_CREATED_RETENTION:180d}
+    outbox-retention: ${NOTIFICATION_OUTBOX_RETENTION:14d}
+    schedule-retention: ${NOTIFICATION_SCHEDULE_RETENTION:14d}
+    inactive-token-retention: ${NOTIFICATION_INACTIVE_TOKEN_RETENTION:90d}
+  firebase:
+    enabled: ${NOTIFICATION_FIREBASE_ENABLED:false}
+    project-id: ${FIREBASE_PROJECT_ID:moyeobab}
+    service-account-json-base64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}
+    service-account-file: ${FIREBASE_SERVICE_ACCOUNT_FILE:}
 
 app:
   cdn:

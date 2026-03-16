@@ -8,6 +8,9 @@ import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
 import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
+import com.matchimban.matchimban_api.notification.entity.NotificationType;
+import com.matchimban.matchimban_api.notification.event.NotificationRequestedEvent;
+import com.matchimban.matchimban_api.notification.service.NotificationScheduleService;
 import com.matchimban.matchimban_api.vote.dto.request.FinalSelectionRequest;
 import com.matchimban.matchimban_api.vote.dto.response.FinalSelectionResponse;
 import com.matchimban.matchimban_api.vote.dto.request.VoteSubmitRequest;
@@ -50,6 +53,7 @@ public class VoteServiceImpl implements VoteService {
     private final VoteCountService voteCountService;
     private final MeetingFinalSelectionRepository meetingFinalSelectionRepository;
     private final CdnUrlComposer cdnUrlComposer;
+    private final NotificationScheduleService notificationScheduleService;
 
     @Transactional
     public CreateVoteResponse createVote(Long meetingId, Long memberId) {
@@ -392,7 +396,8 @@ public class VoteServiceImpl implements VoteService {
 
         if (v2.getStatus() == VoteStatus.RESERVED) {
             v2.markOpen(now);
-            // TODO(notification): 2차 투표 OPEN 알림. recipients: ACTIVE MeetingParticipant.memberId
+            List<Long> recipientMemberIds = meetingParticipantRepository.findActiveMemberIds(meetingId);
+            publishRound2OpenNotification(meetingId, v2.getId(), recipientMemberIds);
             return;
         }
 
@@ -446,8 +451,15 @@ public class VoteServiceImpl implements VoteService {
                 .build();
 
         meetingFinalSelectionRepository.save(fs);
-        // TODO(notification): 최종 선택 확정 알림. recipients: ACTIVE MeetingParticipant.memberId
-        // TODO(notification): 리뷰 작성 요청 알림(+30m). recipients: review not submitted ACTIVE MeetingParticipant.memberId
+
+        List<Long> recipientMemberIds = meetingParticipantRepository.findActiveMemberIds(meetingId);
+        publishFinalSelectionConfirmedNotification(meetingId, candidate.getId(), recipientMemberIds);
+        notificationScheduleService.scheduleReviewRequestJobs(
+                meetingId,
+                voteId,
+                recipientMemberIds,
+                Instant.now().plusSeconds(30 * 60)
+        );
     }
 
     @Transactional(readOnly = true)
@@ -478,5 +490,35 @@ public class VoteServiceImpl implements VoteService {
                 raw.getRoadAddress(),
                 raw.getJibunAddress()
         );
+    }
+
+    private void publishRound2OpenNotification(Long meetingId, Long voteId, List<Long> recipientMemberIds) {
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                NotificationType.VOTE_ROUND2_OPEN,
+                "2차 투표 시작",
+                "2차 투표가 열렸어요. 지금 결과를 확인해 보세요.",
+                "VOTE",
+                meetingId,
+                voteId,
+                "/meetings/" + meetingId + "/votes/" + voteId,
+                "VOTE_ROUND2_OPEN:" + meetingId + ":" + voteId,
+                null,
+                recipientMemberIds
+        ));
+    }
+
+    private void publishFinalSelectionConfirmedNotification(Long meetingId, Long candidateId, List<Long> recipientMemberIds) {
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                NotificationType.FINAL_SELECTION_CONFIRMED,
+                "최종 식당 확정",
+                "오늘의 식당이 최종 확정됐어요.",
+                "MEETING",
+                meetingId,
+                candidateId,
+                "/meetings/" + meetingId + "/final",
+                "FINAL_SELECTION_CONFIRMED:" + meetingId + ":" + candidateId,
+                null,
+                recipientMemberIds
+        ));
     }
 }

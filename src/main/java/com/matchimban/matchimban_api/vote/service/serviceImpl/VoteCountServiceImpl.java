@@ -1,5 +1,8 @@
 package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
+import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
+import com.matchimban.matchimban_api.notification.entity.NotificationType;
+import com.matchimban.matchimban_api.notification.event.NotificationRequestedEvent;
 import com.matchimban.matchimban_api.vote.entity.MeetingRestaurantCandidate;
 import com.matchimban.matchimban_api.vote.entity.Vote;
 import com.matchimban.matchimban_api.vote.entity.enums.VoteChoice;
@@ -12,6 +15,7 @@ import com.matchimban.matchimban_api.vote.service.VoteFailureService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +36,8 @@ public class VoteCountServiceImpl implements VoteCountService {
     private final VoteRepository voteRepository;
     private final VoteSubmissionRepository voteSubmissionRepository;
     private final MeetingRestaurantCandidateRepository candidateRepository;
+    private final MeetingParticipantRepository meetingParticipantRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final VoteFailureService voteFailureService;
 
@@ -109,7 +115,7 @@ public class VoteCountServiceImpl implements VoteCountService {
             }
 
             vote.markCounted(Instant.now());
-            // TODO(notification): 투표 집계 완료/Top3 생성 알림. recipients: ACTIVE MeetingParticipant.memberId
+            publishVoteResultReadyNotification(vote);
 
             LOG.info("Vote counted. voteId={}, candidates={}", voteId, candidates.size());
 
@@ -118,5 +124,24 @@ public class VoteCountServiceImpl implements VoteCountService {
 
             voteFailureService.markVoteFailed(voteId);
         }
+    }
+
+    private void publishVoteResultReadyNotification(Vote vote) {
+        Long meetingId = vote.getMeeting().getId();
+        Long voteId = vote.getId();
+        List<Long> recipientMemberIds = meetingParticipantRepository.findActiveMemberIds(meetingId);
+
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                NotificationType.VOTE_RESULT_READY,
+                "투표 결과 도착",
+                "투표 집계가 완료됐어요. 결과를 확인해 보세요.",
+                "VOTE",
+                meetingId,
+                voteId,
+                "/meetings/" + meetingId + "/votes/" + voteId + "/top3",
+                "VOTE_RESULT_READY:" + meetingId + ":" + voteId,
+                null,
+                recipientMemberIds
+        ));
     }
 }
