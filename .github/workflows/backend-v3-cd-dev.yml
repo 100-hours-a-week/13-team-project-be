@@ -116,7 +116,7 @@ jobs:
 
       - name: Update image tag
         run: |
-          cd cloud-repo/v3-kubernetes/k8s/overlays/dev
+          cd cloud-repo/v3-kubernetes/k8s/overlays/dev/backend
           kustomize edit set image moyeobab/backend=$(grep -oP 'newName: \K.*' kustomization.yaml | head -1):$IMAGE_TAG
 
       - name: Commit and push
@@ -124,7 +124,7 @@ jobs:
           cd cloud-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add v3-kubernetes/k8s/overlays/dev/kustomization.yaml
+          git add v3-kubernetes/k8s/overlays/dev/backend/kustomization.yaml
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "deploy(dev): backend 이미지 태그 업데이트 ($IMAGE_TAG)"
           git push
