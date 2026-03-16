@@ -41,6 +41,7 @@ out/
 AGENTS.md
 Skills/
 retros/
+docs/
 
 # Local load-test monitoring (Prometheus/Grafana)
 perf/monitoring/
