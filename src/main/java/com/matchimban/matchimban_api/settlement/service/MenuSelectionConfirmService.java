@@ -4,6 +4,8 @@ import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
+import com.matchimban.matchimban_api.notification.entity.NotificationType;
+import com.matchimban.matchimban_api.notification.event.NotificationRequestedEvent;
 import com.matchimban.matchimban_api.settlement.dto.request.MenuSelectionConfirmRequest;
 import com.matchimban.matchimban_api.settlement.dto.response.MenuSelectionConfirmResponse;
 import com.matchimban.matchimban_api.settlement.entity.MeetingSettlement;
@@ -15,6 +17,7 @@ import com.matchimban.matchimban_api.settlement.enums.SettlementStatus;
 import com.matchimban.matchimban_api.settlement.error.SettlementErrorCode;
 import com.matchimban.matchimban_api.settlement.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +36,7 @@ public class MenuSelectionConfirmService {
     private final ReceiptItemRepository receiptItemRepository;
     private final SettlementParticipantRepository settlementParticipantRepository;
     private final SettlementItemSelectionRepository selectionRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public MenuSelectionConfirmResponse confirm(Long meetingId, Long memberId, MenuSelectionConfirmRequest request) {
@@ -108,7 +112,7 @@ public class MenuSelectionConfirmService {
                         SettlementStatus.CALCULATING,
                         SettlementStatus.RESULT_READY
                 );
-                // TODO(notification): 정산 계산 완료 알림. recipients: ACTIVE SettlementParticipant.participant.memberId
+                publishSettlementResultReadyNotification(meetingId, settlement.getId());
             }
         }
 
@@ -179,5 +183,25 @@ public class MenuSelectionConfirmService {
 
     private BigDecimal safe(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
+    }
+
+    private void publishSettlementResultReadyNotification(Long meetingId, Long settlementId) {
+        List<Long> recipients = meetingParticipantRepository.findActiveMemberIds(meetingId);
+        if (recipients.isEmpty()) {
+            return;
+        }
+
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                NotificationType.SETTLEMENT_RESULT_READY,
+                "정산 결과 도착",
+                "정산 결과가 준비됐어요. 금액을 확인해 주세요.",
+                "SETTLEMENT",
+                meetingId,
+                settlementId,
+                "/meetings/" + meetingId + "/settlement/result",
+                "SETTLEMENT_RESULT_READY:" + meetingId + ":" + settlementId,
+                null,
+                recipients
+        ));
     }
 }

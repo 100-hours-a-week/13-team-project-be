@@ -4,6 +4,8 @@ import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
+import com.matchimban.matchimban_api.notification.entity.NotificationType;
+import com.matchimban.matchimban_api.notification.event.NotificationRequestedEvent;
 import com.matchimban.matchimban_api.settlement.dto.request.OpenSelectionRequest;
 import com.matchimban.matchimban_api.settlement.dto.response.OpenSelectionResponse;
 import com.matchimban.matchimban_api.settlement.entity.MeetingSettlement;
@@ -17,6 +19,7 @@ import com.matchimban.matchimban_api.settlement.repository.ReceiptItemRepository
 import com.matchimban.matchimban_api.settlement.repository.SettlementParticipantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,7 @@ public class SettlementOpenSelectionService {
     private final MeetingSettlementRepository meetingSettlementRepository;
     private final ReceiptItemRepository receiptItemRepository;
     private final SettlementParticipantRepository settlementParticipantRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public OpenSelectionResponse open(Long meetingId, Long memberId, OpenSelectionRequest request) {
@@ -66,7 +70,7 @@ public class SettlementOpenSelectionService {
         int created = initSettlementParticipants(settlement, meetingId);
 
         settlement.changeStatus(SettlementStatus.SELECTION_OPEN);
-        // TODO(notification): 메뉴 확인 요청 알림. recipients: MEMBER role MeetingParticipant.memberId (exclude host)
+        publishSettlementSelectionOpenNotification(meetingId, settlement.getId());
 
         return new OpenSelectionResponse(settlement.getId(), settlement.getSettlementStatus(), created);
     }
@@ -155,5 +159,29 @@ public class SettlementOpenSelectionService {
         }
 
         return created;
+    }
+
+    private void publishSettlementSelectionOpenNotification(Long meetingId, Long settlementId) {
+        List<Long> recipients = meetingParticipantRepository.findActiveParticipants(meetingId).stream()
+                .filter(participant -> participant.getRole() == MeetingParticipant.Role.MEMBER)
+                .map(participant -> participant.getMember().getId())
+                .toList();
+
+        if (recipients.isEmpty()) {
+            return;
+        }
+
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                NotificationType.SETTLEMENT_SELECTION_OPEN,
+                "정산 메뉴 확인 요청",
+                "정산할 메뉴를 선택해 주세요.",
+                "SETTLEMENT",
+                meetingId,
+                settlementId,
+                "/meetings/" + meetingId + "/settlement/selection",
+                "SETTLEMENT_SELECTION_OPEN:" + meetingId + ":" + settlementId,
+                null,
+                recipients
+        ));
     }
 }

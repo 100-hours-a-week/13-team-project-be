@@ -54,8 +54,10 @@ dependencies {
 	implementation "io.github.resilience4j:resilience4j-circuitbreaker:${resilience4jVersion}"
 	implementation "io.github.resilience4j:resilience4j-annotations:${resilience4jVersion}"
     implementation 'io.jsonwebtoken:jjwt-api:0.12.5'
-    implementation 'org.flywaydb:flyway-core'
-    implementation 'org.flywaydb:flyway-database-postgresql'
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-database-postgresql'
+	implementation 'com.google.firebase:firebase-admin:9.3.0'
+	implementation 'org.jetbrains.kotlin:kotlin-reflect:1.9.25'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'org.postgresql:postgresql'

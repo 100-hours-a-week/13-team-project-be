@@ -4,6 +4,8 @@ import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.error.MeetingErrorCode;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
+import com.matchimban.matchimban_api.notification.entity.NotificationType;
+import com.matchimban.matchimban_api.notification.event.NotificationRequestedEvent;
 import com.matchimban.matchimban_api.settlement.dto.response.SettlementCompleteResponse;
 import com.matchimban.matchimban_api.settlement.dto.response.SettlementCompletedResponse;
 import com.matchimban.matchimban_api.settlement.entity.MeetingSettlement;
@@ -13,10 +15,12 @@ import com.matchimban.matchimban_api.settlement.error.SettlementErrorCode;
 import com.matchimban.matchimban_api.settlement.repository.MeetingSettlementRepository;
 import com.matchimban.matchimban_api.settlement.repository.SettlementParticipantRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +29,7 @@ public class SettlementCompleteService {
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final MeetingSettlementRepository meetingSettlementRepository;
     private final SettlementParticipantRepository settlementParticipantRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public SettlementCompleteResponse complete(Long meetingId, Long memberId) {
@@ -50,8 +55,13 @@ public class SettlementCompleteService {
             throw new ApiException(SettlementErrorCode.COMPLETE_NOT_ALLOWED);
         }
 
+        List<Long> recipients = settlementParticipantRepository.findAllBySettlementId(settlement.getId()).stream()
+                .filter(participant -> participant.getPaymentStatus() != PaymentStatus.DONE)
+                .map(participant -> participant.getParticipant().getMember().getId())
+                .toList();
+
         settlementParticipantRepository.bulkSetPaymentDone(settlement.getId(), PaymentStatus.DONE, Instant.now());
-        // TODO(notification): 송금 완료 일괄 처리 알림. recipients: PaymentStatus changed to DONE SettlementParticipant.participant.memberId
+        publishSettlementBulkDoneNotification(meetingId, settlement.getId(), recipients);
 
         meetingSettlementRepository.updateStatusIfCurrent(settlement.getId(), SettlementStatus.RESULT_READY, SettlementStatus.COMPLETED);
 
@@ -80,5 +90,24 @@ public class SettlementCompleteService {
         }
 
         return new SettlementCompletedResponse(settlement.getId(), settlement.getSettlementStatus());
+    }
+
+    private void publishSettlementBulkDoneNotification(Long meetingId, Long settlementId, List<Long> recipients) {
+        if (recipients.isEmpty()) {
+            return;
+        }
+
+        eventPublisher.publishEvent(new NotificationRequestedEvent(
+                NotificationType.SETTLEMENT_BULK_DONE,
+                "정산 완료",
+                "정산이 모두 완료되었어요.",
+                "SETTLEMENT",
+                meetingId,
+                settlementId,
+                "/meetings/" + meetingId + "/settlement/completed",
+                "SETTLEMENT_BULK_DONE:" + meetingId + ":" + settlementId,
+                null,
+                recipients
+        ));
     }
 }
