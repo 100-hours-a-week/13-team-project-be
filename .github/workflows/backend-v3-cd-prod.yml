@@ -42,12 +42,13 @@ jobs:
           fi
           echo "Image $IMAGE_TAG verified in ECR"
 
-      - name: Checkout cloud repo
-        uses: actions/checkout@v4
-        with:
-          repository: 100-hours-a-week/13-team-project-cloud
-          token: ${{ secrets.CLOUD_REPO_PAT }}
-          ref: main
+      - name: Setup SSH and clone cloud repo
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CLOUD_DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          git clone git@github.com:100-hours-a-week/13-team-project-cloud.git cloud-repo
 
       - name: Setup Kustomize
         run: |
@@ -58,13 +59,14 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.set-tag.outputs.image_tag }}
         run: |
-          cd v3-kubernetes/k8s/overlays/prod
+          cd cloud-repo/v3-kubernetes/k8s/overlays/prod
           kustomize edit set image moyeobab/backend=$(grep -oP 'newName: \K.*' kustomization.yaml | head -1):$IMAGE_TAG
 
       - name: Commit and push
         env:
           IMAGE_TAG: ${{ steps.set-tag.outputs.image_tag }}
         run: |
+          cd cloud-repo
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add v3-kubernetes/k8s/overlays/prod/kustomization.yaml
