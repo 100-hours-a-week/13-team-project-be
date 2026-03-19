@@ -32,7 +32,7 @@ public interface EventCouponRepository extends JpaRepository<EventCoupon, Long> 
             Pageable pageable
     );
 
-    boolean existsByMemberIdAndEventParticipant_EventIdAndIsDeletedFalse(Long memberId, Long eventId);
+    boolean existsByMemberIdAndEventParticipantEventIdAndIsDeletedFalse(Long memberId, Long eventId);
 
     @Query("""
             SELECT ec.member.id
