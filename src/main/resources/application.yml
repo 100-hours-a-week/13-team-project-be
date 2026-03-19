@@ -153,6 +153,16 @@ notification:
     service-account-json-base64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:}
     service-account-file: ${FIREBASE_SERVICE_ACCOUNT_FILE:}
 
+event:
+  issue:
+    enabled: ${EVENT_ISSUE_ENABLED:true}
+    poll-delay: ${EVENT_ISSUE_POLL_DELAY:200ms}
+    batch-size-per-event: ${EVENT_ISSUE_BATCH_SIZE_PER_EVENT:30}
+    max-finalize-retries: ${EVENT_ISSUE_MAX_FINALIZE_RETRIES:3}
+    processing-lease: ${EVENT_ISSUE_PROCESSING_LEASE:10s}
+    terminal-status-ttl: ${EVENT_ISSUE_TERMINAL_STATUS_TTL:1d}
+    polling-interval-millis: ${EVENT_ISSUE_POLLING_INTERVAL_MILLIS:1000}
+
 app:
   cdn:
     base-url: ${APP_CDN_BASE_URL:}
