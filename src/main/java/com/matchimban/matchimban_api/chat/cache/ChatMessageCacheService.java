@@ -225,14 +225,14 @@ public class ChatMessageCacheService {
 		}
 	}
 
-	private void cacheLatestMessageId(Long meetingId, Long messageId) {
+	private void cacheLatestMessageId(Long meetingId, String messageId) {
 		if (messageId == null) {
 			return;
 		}
 		String key = latestMessageIdKey(meetingId);
 		stringRedisTemplate.opsForValue().set(
 			key,
-			String.valueOf(messageId),
+			messageId,
 			Duration.ofSeconds(latestMessageIdTtlSeconds)
 		);
 	}

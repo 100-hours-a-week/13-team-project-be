@@ -1,6 +1,7 @@
 package com.matchimban.matchimban_api.chat.service.serviceImpl;
 
 import com.matchimban.matchimban_api.chat.cache.ChatMessageCacheService;
+import com.matchimban.matchimban_api.chat.document.ChatMessageDocument;
 import com.matchimban.matchimban_api.chat.dto.http.ChatReadPointerUpdatedData;
 import com.matchimban.matchimban_api.chat.dto.ChatSenderDto;
 import com.matchimban.matchimban_api.chat.dto.http.ChatMessageItemDto;
@@ -15,21 +16,21 @@ import com.matchimban.matchimban_api.chat.dto.ws.ChatUnreadCountItem;
 import com.matchimban.matchimban_api.chat.dto.ws.ChatUnreadCountsBasis;
 import com.matchimban.matchimban_api.chat.dto.ws.ChatUnreadCountsUpdatedData;
 import com.matchimban.matchimban_api.chat.dto.ws.ChatUnreadCountsUpdatedEvent;
-import com.matchimban.matchimban_api.chat.entity.ChatMessage;
 import com.matchimban.matchimban_api.chat.entity.ChatMessageType;
 import com.matchimban.matchimban_api.chat.error.ChatErrorCode;
 import com.matchimban.matchimban_api.chat.event.ChatMessageCreatedInternalEvent;
 import com.matchimban.matchimban_api.chat.event.ChatUnreadCountsRefreshInternalEvent;
 import com.matchimban.matchimban_api.chat.metrics.ChatMetricsRecorder;
 import com.matchimban.matchimban_api.chat.redis.ChatRedisPublisher;
-import com.matchimban.matchimban_api.chat.repository.ChatMessageRepository;
+import com.matchimban.matchimban_api.chat.repository.ChatMessageMongoQueryService;
+import com.matchimban.matchimban_api.chat.repository.ChatMessageMongoRepository;
 import com.matchimban.matchimban_api.chat.repository.projection.ChatMessageRow;
+import com.matchimban.matchimban_api.chat.service.ChatMessagePgBridge;
 import com.matchimban.matchimban_api.chat.service.ChatService;
 import com.matchimban.matchimban_api.chat.service.ChatSystemMessageService;
 import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
-import com.matchimban.matchimban_api.meeting.repository.MeetingRepository;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -42,23 +43,21 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 
 	private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-	private final ChatMessageRepository chatMessageRepository;
+	private final ChatMessageMongoRepository chatMessageMongoRepository;
+	private final ChatMessageMongoQueryService chatMessageMongoQueryService;
 	private final MeetingParticipantRepository meetingParticipantRepository;
-	private final MeetingRepository meetingRepository;
+	private final ChatMessagePgBridge chatMessagePgBridge;
 	private final ChatMessageCacheService chatMessageCacheService;
 	private final ChatRedisPublisher chatRedisPublisher;
 	private final StringRedisTemplate stringRedisTemplate;
@@ -69,18 +68,18 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 	private int unreadWindowSize;
 
 	@Override
-	public ChatMessagesLoadedData getMessages(Long memberId, Long meetingId, Long cursor, int size) {
+	public ChatMessagesLoadedData getMessages(Long memberId, Long meetingId, String cursor, int size) {
 		assertActiveParticipant(memberId, meetingId);
 
 		List<ChatMessageRow> rows = loadMessageRows(meetingId, cursor, size);
 
 		boolean hasNext = rows.size() > size;
 		List<ChatMessageRow> pageRows = hasNext ? rows.subList(0, size) : rows;
-		Long nextCursor = hasNext && !pageRows.isEmpty()
+		String nextCursor = hasNext && !pageRows.isEmpty()
 			? pageRows.get(pageRows.size() - 1).messageId()
 			: null;
 
-		Map<Long, Integer> unreadCountMap = buildUnreadCountMap(meetingId, pageRows);
+		Map<String, Integer> unreadCountMap = buildUnreadCountMap(meetingId, pageRows);
 
 		List<ChatMessageItemDto> items = pageRows.stream()
 			.map(row -> toMessageItemDto(row, unreadCountMap.get(row.messageId())))
@@ -92,15 +91,15 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 		);
 	}
 
-	private List<ChatMessageRow> loadMessageRows(Long meetingId, Long cursor, int size) {
+	private List<ChatMessageRow> loadMessageRows(Long meetingId, String cursor, int size) {
 		int fetchSize = size + 1;
 		if (cursor != null || !chatMessageCacheService.isEnabled()) {
-			return queryMessageRows(meetingId, cursor, fetchSize);
+			return chatMessageMongoQueryService.findPageRows(meetingId, cursor, fetchSize);
 		}
 
 		boolean cacheEligible = chatMessageCacheService.recordTrafficAndIsCacheEligible(meetingId);
 		if (!cacheEligible) {
-			return queryMessageRows(meetingId, cursor, fetchSize);
+			return chatMessageMongoQueryService.findPageRows(meetingId, cursor, fetchSize);
 		}
 
 		Optional<List<ChatMessageRow>> cachedRows = chatMessageCacheService.getRecentMessages(meetingId, fetchSize);
@@ -109,20 +108,14 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 		}
 
 		int cacheWindowFetchSize = Math.max(fetchSize, chatMessageCacheService.recentWindowSize() + 1);
-		List<ChatMessageRow> dbRows = queryMessageRows(meetingId, null, cacheWindowFetchSize);
+		List<ChatMessageRow> dbRows = chatMessageMongoQueryService.findPageRows(meetingId, null, cacheWindowFetchSize);
 		if (!dbRows.isEmpty()) {
 			chatMessageCacheService.replaceRecentMessages(meetingId, dbRows);
 		}
 		return dbRows;
 	}
 
-	private List<ChatMessageRow> queryMessageRows(Long meetingId, Long cursor, int fetchSize) {
-		Pageable pageable = PageRequest.of(0, fetchSize);
-		return chatMessageRepository.findPageRows(meetingId, cursor, pageable);
-	}
-
 	@Override
-	@Transactional
 	public ChatMessageSendAckEvent sendMessage(Long memberId, Long meetingId, ChatSendMessageRequest request) {
 		chatMetricsRecorder.recordSendAttempt();
 		MeetingParticipant participant = meetingParticipantRepository
@@ -137,8 +130,8 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 
 		String clientMessageId = normalizeClientMessageId(request.clientMessageId());
 		if (clientMessageId != null) {
-			Optional<ChatMessage> existing = chatMessageRepository
-				.findExistingByIdempotencyKey(
+			Optional<ChatMessageDocument> existing = chatMessageMongoRepository
+				.findByMeetingIdAndParticipantIdAndClientMessageId(
 					meetingId,
 					participant.getId(),
 					clientMessageId
@@ -149,7 +142,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 			}
 		}
 
-		ChatMessage saved;
+		ChatMessageDocument saved;
 		try {
 			saved = persistMessage(
 				participant,
@@ -157,10 +150,10 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 				request.content(),
 				clientMessageId
 			);
-		} catch (DataIntegrityViolationException ex) {
+		} catch (DuplicateKeyException ex) {
 			if (clientMessageId != null) {
-				ChatMessage existing = chatMessageRepository
-					.findExistingByIdempotencyKey(
+				ChatMessageDocument existing = chatMessageMongoRepository
+					.findByMeetingIdAndParticipantIdAndClientMessageId(
 						meetingId,
 						participant.getId(),
 						clientMessageId
@@ -173,27 +166,23 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 		}
 
 		publishMessageCreated(saved, participant);
-		participant.advanceLastReadId(saved.getId());
+		chatMessagePgBridge.advanceLastReadId(meetingId, memberId, saved.getId());
 		scheduleUnreadCountsRefresh(meetingId);
 		chatMetricsRecorder.recordSendAccepted(false);
 		return toAcceptedAck(meetingId, clientMessageId, saved);
 	}
 
 	@Override
-	@Transactional
-	public ChatReadPointerUpdatedData updateReadPointer(Long memberId, Long meetingId, Long lastReadMessageId) {
+	public ChatReadPointerUpdatedData updateReadPointer(Long memberId, Long meetingId, String lastReadMessageId) {
 		assertActiveParticipant(memberId, meetingId);
-		boolean exists = chatMessageRepository.existsActiveMessageInMeeting(meetingId, lastReadMessageId);
+		boolean exists = chatMessageMongoRepository.existsByIdAndMeetingIdAndIsDeletedFalse(
+			lastReadMessageId, meetingId
+		);
 		if (!exists) {
 			throw new ApiException(ChatErrorCode.INVALID_READ_POINTER);
 		}
 
-		int updatedRows = meetingParticipantRepository.advanceLastReadIdIfGreater(
-			meetingId,
-			memberId,
-			MeetingParticipant.Status.ACTIVE,
-			lastReadMessageId
-		);
+		int updatedRows = chatMessagePgBridge.advanceLastReadId(meetingId, memberId, lastReadMessageId);
 		if (updatedRows > 0) {
 			scheduleUnreadCountsRefresh(meetingId);
 		}
@@ -205,24 +194,23 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 	@Override
 	public void publishUnreadCountsWindow(Long meetingId) {
 		int windowSize = Math.max(1, unreadWindowSize);
-		List<Long> recentMessageIdsDesc = chatMessageRepository.findRecentMessageIds(
-			meetingId,
-			PageRequest.of(0, windowSize)
+		List<String> recentMessageIdsDesc = chatMessageMongoQueryService.findRecentMessageIds(
+			meetingId, windowSize
 		);
 		if (recentMessageIdsDesc.isEmpty()) {
 			return;
 		}
 
-		List<Long> recentMessageIds = new ArrayList<>(recentMessageIdsDesc);
+		List<String> recentMessageIds = new ArrayList<>(recentMessageIdsDesc);
 		Collections.reverse(recentMessageIds);
 
-		Map<Long, Integer> unreadCountMap = computeUnreadCounts(meetingId, recentMessageIds);
+		Map<String, Integer> unreadCountMap = computeUnreadCounts(meetingId, recentMessageIds);
 		List<ChatUnreadCountItem> items = recentMessageIds.stream()
 			.map(messageId -> new ChatUnreadCountItem(messageId, unreadCountMap.getOrDefault(messageId, 0)))
 			.toList();
 
-		Long fromMessageId = recentMessageIds.get(0);
-		Long toMessageId = recentMessageIds.get(recentMessageIds.size() - 1);
+		String fromMessageId = recentMessageIds.get(0);
+		String toMessageId = recentMessageIds.get(recentMessageIds.size() - 1);
 		long serverVersion = nextUnreadServerVersion(meetingId);
 
 		ChatUnreadCountsUpdatedData data = new ChatUnreadCountsUpdatedData(
@@ -233,6 +221,26 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 			OffsetDateTime.now(KST)
 		);
 		chatRedisPublisher.publishUnreadCountsUpdated(ChatUnreadCountsUpdatedEvent.of(data));
+	}
+
+	@Override
+	public long countUnreadForMeetingBadge(Long meetingId, Long memberId) {
+		MeetingParticipant participant = meetingParticipantRepository
+			.findByMeetingIdAndMemberIdAndStatusFetchMember(
+				meetingId,
+				memberId,
+				MeetingParticipant.Status.ACTIVE
+			)
+			.orElse(null);
+
+		if (participant == null) {
+			return 0;
+		}
+
+		String lastReadId = participant.getLastReadId();
+		return chatMessageMongoQueryService.countUnreadForMeetingBadge(
+			meetingId, memberId, lastReadId, ChatMessageType.SYSTEM
+		);
 	}
 
 	private void assertActiveParticipant(Long memberId, Long meetingId) {
@@ -278,24 +286,24 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 		);
 	}
 
-	private Map<Long, Integer> buildUnreadCountMap(Long meetingId, List<ChatMessageRow> pageRows) {
-		List<Long> messageIds = pageRows.stream()
+	private Map<String, Integer> buildUnreadCountMap(Long meetingId, List<ChatMessageRow> pageRows) {
+		List<String> messageIds = pageRows.stream()
 			.map(ChatMessageRow::messageId)
 			.toList();
 		return computeUnreadCounts(meetingId, messageIds);
 	}
 
-	private Map<Long, Integer> computeUnreadCounts(Long meetingId, List<Long> messageIds) {
+	private Map<String, Integer> computeUnreadCounts(Long meetingId, List<String> messageIds) {
 		if (messageIds.isEmpty()) {
 			return Map.of();
 		}
 
-		List<Long> activeLastReadIds = meetingParticipantRepository.findActiveLastReadIds(meetingId);
-		Map<Long, Integer> result = new HashMap<>();
-		for (Long messageId : messageIds) {
+		List<String> activeLastReadIds = meetingParticipantRepository.findActiveLastReadIds(meetingId);
+		Map<String, Integer> result = new HashMap<>();
+		for (String messageId : messageIds) {
 			int unreadCount = 0;
-			for (Long lastReadId : activeLastReadIds) {
-				if (lastReadId == null || lastReadId < messageId) {
+			for (String lastReadId : activeLastReadIds) {
+				if (lastReadId == null || lastReadId.compareTo(messageId) < 0) {
 					unreadCount++;
 				}
 			}
@@ -309,36 +317,47 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 	}
 
 	@Override
-	@Transactional
 	public void publishSystemMessage(MeetingParticipant participant, String content) {
 		if (content == null || content.isBlank()) {
 			return;
 		}
-		ChatMessage saved = persistMessage(participant, ChatMessageType.SYSTEM, content, null);
-		participant.advanceLastReadId(saved.getId());
+		ChatMessageDocument saved = persistMessage(participant, ChatMessageType.SYSTEM, content, null);
+		chatMessagePgBridge.advanceLastReadId(
+			participant.getMeeting().getId(), participant.getMember().getId(), saved.getId()
+		);
 		publishMessageCreated(saved, participant);
 		scheduleUnreadCountsRefresh(participant.getMeeting().getId());
 	}
 
-	private ChatMessage persistMessage(
+	private ChatMessageDocument persistMessage(
 		MeetingParticipant participant,
 		ChatMessageType type,
 		String content,
 		String clientMessageId
 	) {
-		ChatMessage saved = chatMessageRepository.save(ChatMessage.builder()
-			.meeting(participant.getMeeting())
-			.participant(participant)
+		Long senderId = participant.getMember().getId();
+		String senderName = participant.getMember().getNickname();
+		String senderProfileImageUrl = participant.getMember().getProfileImageUrl();
+
+		ChatMessageDocument doc = ChatMessageDocument.builder()
+			.meetingId(participant.getMeeting().getId())
+			.participantId(participant.getId())
+			.senderId(senderId)
+			.senderName(senderName)
+			.senderProfileImageUrl(senderProfileImageUrl)
 			.type(type)
 			.clientMessageId(clientMessageId)
-			.message(content)
-			.build());
-		meetingRepository.updateLastChatIdIfGreater(participant.getMeeting().getId(), saved.getId());
+			.content(content)
+			.build();
+
+		ChatMessageDocument saved = chatMessageMongoRepository.save(doc);
+		chatMessagePgBridge.updateLastChatId(participant.getMeeting().getId(), saved.getId());
 		chatMetricsRecorder.recordMessagePersisted(type);
 		return saved;
 	}
 
-	private ChatMessageSendAckEvent toAcceptedAck(Long meetingId, String clientMessageId, ChatMessage message) {
+
+	private ChatMessageSendAckEvent toAcceptedAck(Long meetingId, String clientMessageId, ChatMessageDocument message) {
 		ChatMessageSendAckData ackData = new ChatMessageSendAckData(
 			meetingId,
 			clientMessageId,
@@ -358,7 +377,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 		return version == null ? 0L : version;
 	}
 
-	private void publishMessageCreated(ChatMessage saved, MeetingParticipant participant) {
+	private void publishMessageCreated(ChatMessageDocument saved, MeetingParticipant participant) {
 		ChatSenderDto sender = saved.getType() == ChatMessageType.SYSTEM
 			? null
 			: new ChatSenderDto(
@@ -368,10 +387,10 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 			);
 
 		ChatMessageCreatedData createdData = new ChatMessageCreatedData(
-			participant.getMeeting().getId(),
+			saved.getMeetingId(),
 			saved.getId(),
 			saved.getType(),
-			saved.getMessage(),
+			saved.getContent(),
 			sender,
 			toKstOffsetDateTime(saved.getCreatedAt())
 		);
