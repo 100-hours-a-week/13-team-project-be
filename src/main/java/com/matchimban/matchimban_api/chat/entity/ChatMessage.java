@@ -1,11 +1,5 @@
 package com.matchimban.matchimban_api.chat.entity;
 
-// =============================================================================
-// [MongoDB Migration] PostgreSQL JPA Entity - 주석 처리됨
-// MongoDB ChatMessageDocument로 완전 대체. 부하테스트 완료 후 삭제 예정.
-// =============================================================================
-
-/*
 import com.matchimban.matchimban_api.meeting.entity.Meeting;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import jakarta.persistence.Column;
@@ -74,4 +68,3 @@ public class ChatMessage {
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 }
-*/

@@ -1,12 +1,5 @@
 package com.matchimban.matchimban_api.chat.repository;
 
-// =============================================================================
-// [MongoDB Migration] PostgreSQL JPA Repository - 주석 처리됨
-// MongoDB ChatMessageMongoRepository + ChatMessageMongoQueryService로 완전 대체.
-// 부하테스트 완료 후 삭제 예정.
-// =============================================================================
-
-/*
 import com.matchimban.matchimban_api.chat.entity.ChatMessage;
 import com.matchimban.matchimban_api.chat.entity.ChatMessageType;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
@@ -105,4 +98,3 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
 		@Param("excludedType") ChatMessageType excludedType
 	);
 }
-*/
