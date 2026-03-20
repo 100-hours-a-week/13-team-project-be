@@ -1,12 +1,15 @@
 package com.matchimban.matchimban_api.event.repository;
 
 import com.matchimban.matchimban_api.event.entity.EventCoupon;
+import com.matchimban.matchimban_api.event.entity.CouponType;
 import java.time.Instant;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
+import jakarta.persistence.LockModeType;
 
 public interface EventCouponRepository extends JpaRepository<EventCoupon, Long> {
 
@@ -41,4 +44,37 @@ public interface EventCouponRepository extends JpaRepository<EventCoupon, Long> 
               AND ec.isDeleted = false
             """)
     List<Long> findIssuedMemberIdsByEventId(@Param("eventId") Long eventId);
+
+    @Query("""
+            SELECT count(ec)
+            FROM EventCoupon ec
+            WHERE ec.member.id = :memberId
+              AND ec.couponType = :couponType
+              AND ec.status = com.matchimban.matchimban_api.event.entity.EventCouponStatus.ISSUED
+              AND ec.isDeleted = false
+              AND ec.expiredAt > :now
+            """)
+    long countUsableCoupons(
+            @Param("memberId") Long memberId,
+            @Param("couponType") CouponType couponType,
+            @Param("now") Instant now
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT ec
+            FROM EventCoupon ec
+            WHERE ec.member.id = :memberId
+              AND ec.couponType = :couponType
+              AND ec.status = com.matchimban.matchimban_api.event.entity.EventCouponStatus.ISSUED
+              AND ec.isDeleted = false
+              AND ec.expiredAt > :now
+            ORDER BY ec.expiredAt ASC, ec.createdAt ASC, ec.id ASC
+            """)
+    List<EventCoupon> findUsableCouponsForUpdate(
+            @Param("memberId") Long memberId,
+            @Param("couponType") CouponType couponType,
+            @Param("now") Instant now,
+            Pageable pageable
+    );
 }

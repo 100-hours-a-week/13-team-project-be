@@ -74,15 +74,19 @@ public class VoteCountServiceImpl implements VoteCountService {
             Map<Long, Integer> likeMap = new HashMap<>();
             Map<Long, Integer> dislikeMap = new HashMap<>();
             Map<Long, Integer> neutralMap = new HashMap<>();
+            Map<Long, Long> weightedScoreMap = new HashMap<>();
 
             for (var row : rows) {
                 long cnt = row.getCnt();
+                long weightSum = row.getWeightSum();
                 Long cid = row.getCandidateId();
 
                 if (row.getChoice() == VoteChoice.LIKE) {
                     likeMap.put(cid, (int) cnt);
+                    weightedScoreMap.merge(cid, weightSum, Long::sum);
                 } else if (row.getChoice() == VoteChoice.DISLIKE) {
                     dislikeMap.put(cid, (int) cnt);
+                    weightedScoreMap.merge(cid, -weightSum, Long::sum);
                 } else if (row.getChoice() == VoteChoice.NEUTRAL) {
                     neutralMap.put(cid, (int) cnt);
                 }
@@ -97,9 +101,8 @@ public class VoteCountServiceImpl implements VoteCountService {
 
             candidates.sort(
                     Comparator
-                            .comparingInt((MeetingRestaurantCandidate c) ->
-                                    (c.getLikeCount() == null ? 0 : c.getLikeCount())
-                                            - (c.getDislikeCount() == null ? 0 : c.getDislikeCount())
+                            .comparingLong((MeetingRestaurantCandidate c) ->
+                                    weightedScoreMap.getOrDefault(c.getId(), 0L)
                             ).reversed()
                             .thenComparing(
                                     (MeetingRestaurantCandidate c) ->

@@ -28,12 +28,14 @@ public interface VoteSubmissionRepository extends JpaRepository<VoteSubmission, 
         Long getCandidateId();
         VoteChoice getChoice();
         long getCnt();
+        long getWeightSum();
     }
 
     @Query("""
         select vs.candidateRestaurant.id as candidateId,
                vs.choice as choice,
-               count(vs.id) as cnt
+               count(vs.id) as cnt,
+               coalesce(sum(vs.voteWeight), 0) as weightSum
         from VoteSubmission vs
         where vs.vote.id = :voteId
         group by vs.candidateRestaurant.id, vs.choice
