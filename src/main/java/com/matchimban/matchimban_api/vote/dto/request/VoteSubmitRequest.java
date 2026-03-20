@@ -24,5 +24,7 @@ public class VoteSubmitRequest {
 
         @NotNull
         private VoteChoice choice;
+
+        private boolean useCoupon;
     }
 }

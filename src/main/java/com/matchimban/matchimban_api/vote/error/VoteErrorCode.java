@@ -24,6 +24,8 @@ public enum VoteErrorCode implements ErrorCode {
     FINAL_ALREADY_SELECTED(HttpStatus.CONFLICT, "이미 최종 선택이 완료되었습니다."),
     REVOTE_NOT_AVAILABLE(HttpStatus.CONFLICT, "재투표를 시작할 수 없는 상태입니다."),
     VOTE_DEADLINE_PASSED(HttpStatus.CONFLICT, "투표 마감 시간이 지나 재투표를 시작할 수 없습니다."),
+    QUICK_MEETING_COUPON_NOT_ALLOWED(HttpStatus.CONFLICT, "퀵모임에서는 쿠폰을 사용할 수 없습니다."),
+    VOTE_COUPON_NOT_ENOUGH(HttpStatus.CONFLICT, "사용 가능한 쿠폰이 부족합니다."),
 
     // 502
     AI_RECOMMENDATION_FAILED(HttpStatus.BAD_GATEWAY, "추천 시스템 오류가 발생했습니다."),

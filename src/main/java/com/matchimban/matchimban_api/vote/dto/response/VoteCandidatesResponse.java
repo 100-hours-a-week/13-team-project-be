@@ -9,6 +9,8 @@ import lombok.Getter;
 @AllArgsConstructor
 public class VoteCandidatesResponse {
 
+    private int availableSuperLikeCouponCount;
+
     private List<Candidate> candidates;
 
     @Getter

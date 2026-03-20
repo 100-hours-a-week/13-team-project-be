@@ -1,5 +1,8 @@
 package com.matchimban.matchimban_api.vote.service.serviceImpl;
 
+import com.matchimban.matchimban_api.event.entity.CouponType;
+import com.matchimban.matchimban_api.event.entity.EventCoupon;
+import com.matchimban.matchimban_api.event.service.EventCouponUseService;
 import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.global.error.code.CommonErrorCode;
 import com.matchimban.matchimban_api.global.storage.CdnUrlComposer;
@@ -35,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -54,6 +58,7 @@ public class VoteServiceImpl implements VoteService {
     private final MeetingFinalSelectionRepository meetingFinalSelectionRepository;
     private final CdnUrlComposer cdnUrlComposer;
     private final NotificationScheduleService notificationScheduleService;
+    private final EventCouponUseService eventCouponUseService;
 
     @Transactional
     public CreateVoteResponse createVote(Long meetingId, Long memberId) {
@@ -187,7 +192,11 @@ public class VoteServiceImpl implements VoteService {
                 ))
                 .toList();
 
-        return new VoteCandidatesResponse(mapped);
+        int availableSuperLikeCouponCount = vote.getMeeting().isQuickMeeting()
+                ? 0
+                : eventCouponUseService.countAvailableCoupons(memberId, CouponType.SUPER_LIKE, Instant.now());
+
+        return new VoteCandidatesResponse(availableSuperLikeCouponCount, mapped);
     }
 
     @Transactional
@@ -215,6 +224,14 @@ public class VoteServiceImpl implements VoteService {
             return;
         }
 
+        long couponUsageCount = request.getItems().stream()
+                .filter(VoteSubmitRequest.Item::isUseCoupon)
+                .count();
+
+        if (vote.getMeeting().isQuickMeeting() && couponUsageCount > 0) {
+            throw new ApiException(VoteErrorCode.QUICK_MEETING_COUPON_NOT_ALLOWED);
+        }
+
         int expectedCount = vote.getMeeting().getSwipeCount();
         int actualCount = (request.getItems() == null) ? 0 : request.getItems().size();
         if (actualCount != expectedCount) {
@@ -240,16 +257,33 @@ public class VoteServiceImpl implements VoteService {
                 meetingRestaurantCandidateRepository.findAllById(candidateIds).stream()
                         .collect(Collectors.toMap(MeetingRestaurantCandidate::getId, c -> c));
 
+        List<EventCoupon> claimedCoupons = eventCouponUseService.claimCoupons(
+                memberId,
+                CouponType.SUPER_LIKE,
+                Math.toIntExact(couponUsageCount),
+                Instant.now()
+        );
+        if (claimedCoupons.size() != couponUsageCount) {
+            throw new ApiException(VoteErrorCode.VOTE_COUPON_NOT_ENOUGH);
+        }
+
+        List<EventCoupon> couponsToConsume = new ArrayList<>(claimedCoupons);
+        Instant now = Instant.now();
+
         List<VoteSubmission> submissions = request.getItems().stream()
                 .map(item -> VoteSubmission.builder()
                         .vote(vote)
                         .participant(participant)
                         .candidateRestaurant(candidateMap.get(item.getCandidateId()))
                         .choice(item.getChoice())
+                        .usedCoupon(item.isUseCoupon() ? couponsToConsume.remove(0) : null)
+                        .voteWeight(item.isUseCoupon() ? 2 : 1)
                         .build())
                 .toList();
 
         voteSubmissionRepository.saveAll(submissions);
+
+        claimedCoupons.forEach(coupon -> coupon.markUsed(now));
 
         long activeCount = meetingParticipantRepository.countByMeetingIdAndStatus(
                 meetingId, MeetingParticipant.Status.ACTIVE
