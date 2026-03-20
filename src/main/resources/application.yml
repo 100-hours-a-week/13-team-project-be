@@ -14,6 +14,10 @@ spring:
   #     region:
   #       static: ${AWS_REGION:ap-northeast-2}
 
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/matchimban}
+
   jpa:
     hibernate:
       ddl-auto: update
