@@ -12,8 +12,8 @@ public record ChatMessageCreatedData(
 	@Schema(example = "10")
 	Long meetingId,
 	@JsonProperty("message_id")
-	@Schema(example = "13003")
-	Long messageId,
+	@Schema(example = "6650a1b2c3d4e5f678901234")
+	String messageId,
 	@Schema(example = "TEXT")
 	ChatMessageType type,
 	@Schema(example = "저도 투표했습니다!")

@@ -42,8 +42,8 @@ public class MeetingParticipant {
     @Column(length = 20, nullable = false)
     private Status status;
 
-    @Column(name = "last_read_id")
-    private Long lastReadId;
+    @Column(name = "last_read_id", length = 24)
+    private String lastReadId;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false)
@@ -54,7 +54,7 @@ public class MeetingParticipant {
     private Instant updatedAt;
 
     @Builder
-    private MeetingParticipant(Meeting meeting, Member member, Role role, Status status, Long lastReadId) {
+    private MeetingParticipant(Meeting meeting, Member member, Role role, Status status, String lastReadId) {
         this.meeting = meeting;
         this.member = member;
         this.role = role;
@@ -81,11 +81,11 @@ public class MeetingParticipant {
         this.status = Status.LEFT;
     }
 
-    public boolean advanceLastReadId(Long messageId) {
+    public boolean advanceLastReadId(String messageId) {
         if (messageId == null) {
             return false;
         }
-        if (this.lastReadId == null || this.lastReadId < messageId) {
+        if (this.lastReadId == null || this.lastReadId.compareTo(messageId) < 0) {
             this.lastReadId = messageId;
             return true;
         }

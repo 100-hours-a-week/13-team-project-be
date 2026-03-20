@@ -13,8 +13,8 @@ public record ChatMessageSendAckData(
 	@Schema(example = "8c2f3b1a-8d4d-4dd8-9a10-4d8b0d9f8f21")
 	String clientMessageId,
 	@JsonProperty("message_id")
-	@Schema(example = "13003")
-	Long messageId,
+	@Schema(example = "6650a1b2c3d4e5f678901234")
+	String messageId,
 	@Schema(example = "ACCEPTED")
 	String status,
 	@JsonProperty("created_at")
