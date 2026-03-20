@@ -352,6 +352,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 
 		ChatMessageDocument saved = chatMessageMongoRepository.save(doc);
 		chatMessagePgBridge.updateLastChatId(participant.getMeeting().getId(), saved.getId());
+		chatMessagePgBridge.dualWriteMessage(participant, type, content, clientMessageId);
 		chatMetricsRecorder.recordMessagePersisted(type);
 		return saved;
 	}
