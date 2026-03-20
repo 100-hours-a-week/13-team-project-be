@@ -3,8 +3,8 @@ package com.matchimban.matchimban_api.chat.event;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 
 @Slf4j
 @Component
@@ -13,7 +13,8 @@ public class ChatUnreadCountsRefreshEventListener {
 
 	private final ChatUnreadCountsRefreshCoalescer unreadCountsRefreshCoalescer;
 
-	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	@Async
+	@EventListener
 	public void onUnreadCountsRefresh(ChatUnreadCountsRefreshInternalEvent event) {
 		try {
 			unreadCountsRefreshCoalescer.request(event.meetingId());
