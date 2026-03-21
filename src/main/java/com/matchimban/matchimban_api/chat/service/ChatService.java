@@ -7,11 +7,13 @@ import com.matchimban.matchimban_api.chat.dto.ws.ChatSendMessageRequest;
 
 public interface ChatService {
 
-	ChatMessagesLoadedData getMessages(Long memberId, Long meetingId, Long cursor, int size);
+	ChatMessagesLoadedData getMessages(Long memberId, Long meetingId, String cursor, int size);
 
 	ChatMessageSendAckEvent sendMessage(Long memberId, Long meetingId, ChatSendMessageRequest request);
 
-	ChatReadPointerUpdatedData updateReadPointer(Long memberId, Long meetingId, Long lastReadMessageId);
+	ChatReadPointerUpdatedData updateReadPointer(Long memberId, Long meetingId, String lastReadMessageId);
 
 	void publishUnreadCountsWindow(Long meetingId);
+
+	long countUnreadForMeetingBadge(Long meetingId, Long memberId);
 }

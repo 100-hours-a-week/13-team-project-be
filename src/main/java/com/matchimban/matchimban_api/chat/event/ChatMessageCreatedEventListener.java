@@ -15,8 +15,8 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 
 @Slf4j
 @Component
@@ -28,7 +28,8 @@ public class ChatMessageCreatedEventListener {
 	private final MeetingParticipantRepository meetingParticipantRepository;
 	private final NotificationCommandService notificationCommandService;
 
-	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	@Async
+	@EventListener
 	public void onChatMessageCreated(ChatMessageCreatedInternalEvent event) {
 		try {
 			ChatMessageCreatedData data = event.payload().data();
@@ -53,8 +54,9 @@ public class ChatMessageCreatedEventListener {
 
 	private ChatMessageRow toRow(ChatMessageCreatedData data) {
 		ChatSenderDto sender = data.sender();
+		String messageId = data.messageId();
 		return new ChatMessageRow(
-			data.messageId(),
+			messageId,
 			data.type(),
 			data.content(),
 			toInstant(data.createdAt()),
@@ -73,6 +75,9 @@ public class ChatMessageCreatedEventListener {
 			return;
 		}
 		if (data.sender() == null || data.sender().userId() == null) {
+			return;
+		}
+		if (data.content() != null && data.content().startsWith("PERF_MSG::")) {
 			return;
 		}
 
@@ -94,7 +99,7 @@ public class ChatMessageCreatedEventListener {
 			senderName + ": " + truncate(content, 120),
 			"MEETING",
 			data.meetingId(),
-			data.messageId(),
+			null,
 			"/meetings/" + data.meetingId() + "/chat",
 			"CHAT_MESSAGE:" + data.meetingId() + ":" + data.messageId(),
 			null,

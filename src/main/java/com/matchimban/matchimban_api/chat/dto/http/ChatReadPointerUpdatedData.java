@@ -9,8 +9,8 @@ public record ChatReadPointerUpdatedData(
 	@Schema(example = "10")
 	Long meetingId,
 	@JsonProperty("last_read_message_id")
-	@Schema(example = "13003")
-	Long lastReadMessageId,
+	@Schema(example = "6650a1b2c3d4e5f678901234")
+	String lastReadMessageId,
 	@Schema(description = "포인터가 실제로 전진했는지 여부", example = "true")
 	boolean updated
 ) {

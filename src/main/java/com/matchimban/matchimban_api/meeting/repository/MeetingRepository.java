@@ -62,13 +62,13 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     @Modifying
     @Query(value = """
         update meetings
-           set last_chat_id = GREATEST(COALESCE(last_chat_id, 0), :chatMessageId)
+           set last_chat_id = GREATEST(COALESCE(last_chat_id, ''), CAST(:chatMessageId AS VARCHAR))
          where id = :meetingId
            and is_deleted = false
     """, nativeQuery = true)
     int updateLastChatIdIfGreater(
             @Param("meetingId") Long meetingId,
-            @Param("chatMessageId") Long chatMessageId
+            @Param("chatMessageId") String chatMessageId
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

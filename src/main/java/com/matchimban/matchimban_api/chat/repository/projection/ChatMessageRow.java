@@ -4,7 +4,7 @@ import com.matchimban.matchimban_api.chat.entity.ChatMessageType;
 import java.time.Instant;
 
 public record ChatMessageRow(
-	Long messageId,
+	String messageId,
 	ChatMessageType type,
 	String content,
 	Instant createdAt,

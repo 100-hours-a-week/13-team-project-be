@@ -1,8 +1,7 @@
 package com.matchimban.matchimban_api.meeting.service.serviceImpl;
 
 import com.matchimban.matchimban_api.global.error.api.ApiException;
-import com.matchimban.matchimban_api.chat.entity.ChatMessageType;
-import com.matchimban.matchimban_api.chat.repository.ChatMessageRepository;
+import com.matchimban.matchimban_api.chat.service.ChatService;
 import com.matchimban.matchimban_api.meeting.dto.response.InviteCodeResponse;
 import com.matchimban.matchimban_api.meeting.dto.response.MeetingDetailResponse;
 import com.matchimban.matchimban_api.meeting.dto.response.MeetingDetailStateResponse;
@@ -44,7 +43,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
 
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final MeetingRepository meetingRepository;
-    private final ChatMessageRepository chatMessageRepository;
+    private final ChatService chatService;
     private final VoteRepository voteRepository;
     private final VoteSubmissionRepository voteSubmissionRepository;
     private final MeetingSettlementRepository meetingSettlementRepository;
@@ -192,12 +191,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
         boolean hasVotedCurrent = (currentVoteId != null)
                 && voteSubmissionRepository.existsByVoteIdAndParticipantMemberId(currentVoteId, memberId);
 
-        long chatUnreadCount = chatMessageRepository.countUnreadForMeetingBadge(
-                meetingId,
-                memberId,
-                MeetingParticipant.Status.ACTIVE,
-                ChatMessageType.SYSTEM
-        );
+        long chatUnreadCount = chatService.countUnreadForMeetingBadge(meetingId, memberId);
 
         SettlementStatus settlementStatus = resolveSettlementStatus(meetingId);
 

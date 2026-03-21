@@ -14,6 +14,10 @@ spring:
   #     region:
   #       static: ${AWS_REGION:ap-northeast-2}
 
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/matchimban}
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -94,6 +98,7 @@ perf-log:
     - /v3/api-docs
 
 chat:
+  read-source: ${CHAT_READ_SOURCE:pg}
   upload:
     bucket: ${CHAT_IMAGE_BUCKET:}
     public-base-url: ${CHAT_IMAGE_PUBLIC_BASE_URL:}
