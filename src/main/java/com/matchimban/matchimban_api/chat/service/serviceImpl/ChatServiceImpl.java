@@ -24,6 +24,7 @@ import com.matchimban.matchimban_api.chat.metrics.ChatMetricsRecorder;
 import com.matchimban.matchimban_api.chat.redis.ChatRedisPublisher;
 import com.matchimban.matchimban_api.chat.repository.ChatMessageMongoQueryService;
 import com.matchimban.matchimban_api.chat.repository.ChatMessageMongoRepository;
+import com.matchimban.matchimban_api.chat.repository.ChatMessageRepository;
 import com.matchimban.matchimban_api.chat.repository.projection.ChatMessageRow;
 import com.matchimban.matchimban_api.chat.service.ChatMessagePgBridge;
 import com.matchimban.matchimban_api.chat.service.ChatService;
@@ -31,6 +32,7 @@ import com.matchimban.matchimban_api.chat.service.ChatSystemMessageService;
 import com.matchimban.matchimban_api.global.error.api.ApiException;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.meeting.repository.MeetingParticipantRepository;
+import org.springframework.data.domain.PageRequest;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -56,6 +58,7 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 
 	private final ChatMessageMongoRepository chatMessageMongoRepository;
 	private final ChatMessageMongoQueryService chatMessageMongoQueryService;
+	private final ChatMessageRepository chatMessageRepository;
 	private final MeetingParticipantRepository meetingParticipantRepository;
 	private final ChatMessagePgBridge chatMessagePgBridge;
 	private final ChatMessageCacheService chatMessageCacheService;
@@ -64,8 +67,15 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 	private final ApplicationEventPublisher applicationEventPublisher;
 	private final ChatMetricsRecorder chatMetricsRecorder;
 
+	@Value("${chat.read-source:pg}")
+	private String readSource;
+
 	@Value("${chat.unread.window-size:50}")
 	private int unreadWindowSize;
+
+	private boolean useMongoDB() {
+		return "mongodb".equals(readSource);
+	}
 
 	@Override
 	public ChatMessagesLoadedData getMessages(Long memberId, Long meetingId, String cursor, int size) {
@@ -93,6 +103,9 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 
 	private List<ChatMessageRow> loadMessageRows(Long meetingId, String cursor, int size) {
 		int fetchSize = size + 1;
+		if (!useMongoDB()) {
+			return chatMessageRepository.findPageRows(meetingId, cursor, PageRequest.of(0, fetchSize));
+		}
 		if (cursor != null || !chatMessageCacheService.isEnabled()) {
 			return chatMessageMongoQueryService.findPageRows(meetingId, cursor, fetchSize);
 		}
@@ -175,9 +188,9 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 	@Override
 	public ChatReadPointerUpdatedData updateReadPointer(Long memberId, Long meetingId, String lastReadMessageId) {
 		assertActiveParticipant(memberId, meetingId);
-		boolean exists = chatMessageMongoRepository.existsByIdAndMeetingIdAndIsDeletedFalse(
-			lastReadMessageId, meetingId
-		);
+		boolean exists = useMongoDB()
+			? chatMessageMongoRepository.existsByIdAndMeetingIdAndIsDeletedFalse(lastReadMessageId, meetingId)
+			: chatMessageRepository.existsActiveMessageInMeeting(meetingId, lastReadMessageId);
 		if (!exists) {
 			throw new ApiException(ChatErrorCode.INVALID_READ_POINTER);
 		}
@@ -194,9 +207,9 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 	@Override
 	public void publishUnreadCountsWindow(Long meetingId) {
 		int windowSize = Math.max(1, unreadWindowSize);
-		List<String> recentMessageIdsDesc = chatMessageMongoQueryService.findRecentMessageIds(
-			meetingId, windowSize
-		);
+		List<String> recentMessageIdsDesc = useMongoDB()
+			? chatMessageMongoQueryService.findRecentMessageIds(meetingId, windowSize)
+			: chatMessageRepository.findRecentMessageIds(meetingId, PageRequest.of(0, windowSize));
 		if (recentMessageIdsDesc.isEmpty()) {
 			return;
 		}
@@ -225,21 +238,26 @@ public class ChatServiceImpl implements ChatService, ChatSystemMessageService {
 
 	@Override
 	public long countUnreadForMeetingBadge(Long meetingId, Long memberId) {
-		MeetingParticipant participant = meetingParticipantRepository
-			.findByMeetingIdAndMemberIdAndStatusFetchMember(
-				meetingId,
-				memberId,
-				MeetingParticipant.Status.ACTIVE
-			)
-			.orElse(null);
+		if (useMongoDB()) {
+			MeetingParticipant participant = meetingParticipantRepository
+				.findByMeetingIdAndMemberIdAndStatusFetchMember(
+					meetingId,
+					memberId,
+					MeetingParticipant.Status.ACTIVE
+				)
+				.orElse(null);
 
-		if (participant == null) {
-			return 0;
+			if (participant == null) {
+				return 0;
+			}
+
+			String lastReadId = participant.getLastReadId();
+			return chatMessageMongoQueryService.countUnreadForMeetingBadge(
+				meetingId, memberId, lastReadId, ChatMessageType.SYSTEM
+			);
 		}
-
-		String lastReadId = participant.getLastReadId();
-		return chatMessageMongoQueryService.countUnreadForMeetingBadge(
-			meetingId, memberId, lastReadId, ChatMessageType.SYSTEM
+		return chatMessageRepository.countUnreadForMeetingBadge(
+			meetingId, memberId, MeetingParticipant.Status.ACTIVE, ChatMessageType.SYSTEM
 		);
 	}
 
