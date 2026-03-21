@@ -10,8 +10,8 @@ import java.time.OffsetDateTime;
 @Schema(description = "메시지 항목")
 public record ChatMessageItemDto(
 	@JsonProperty("message_id")
-	@Schema(example = "13001")
-	Long messageId,
+	@Schema(example = "6650a1b2c3d4e5f678901234")
+	String messageId,
 	@JsonProperty("unread_count")
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 		@Schema(

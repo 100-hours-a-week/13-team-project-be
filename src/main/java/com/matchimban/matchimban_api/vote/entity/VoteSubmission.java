@@ -1,5 +1,6 @@
 package com.matchimban.matchimban_api.vote.entity;
 
+import com.matchimban.matchimban_api.event.entity.EventCoupon;
 import com.matchimban.matchimban_api.meeting.entity.MeetingParticipant;
 import com.matchimban.matchimban_api.vote.entity.enums.VoteChoice;
 import jakarta.persistence.*;
@@ -39,6 +40,14 @@ public class VoteSubmission {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "candidate_restaurant_id")
     private MeetingRestaurantCandidate candidateRestaurant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "used_coupon_id")
+    private EventCoupon usedCoupon;
+
+    @Builder.Default
+    @Column(name = "vote_weight", nullable = false)
+    private int voteWeight = 1;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

@@ -9,10 +9,10 @@ public record ChatUnreadCountsBasis(
 	@Schema(example = "50")
 	int windowSize,
 	@JsonProperty("from_message_id")
-	@Schema(nullable = true, example = "12954")
-	Long fromMessageId,
+	@Schema(nullable = true, example = "6650a1b2c3d4e5f678901200")
+	String fromMessageId,
 	@JsonProperty("to_message_id")
-	@Schema(nullable = true, example = "13003")
-	Long toMessageId
+	@Schema(nullable = true, example = "6650a1b2c3d4e5f678901234")
+	String toMessageId
 ) {
 }

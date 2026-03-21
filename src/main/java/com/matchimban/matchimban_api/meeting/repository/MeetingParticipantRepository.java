@@ -120,7 +120,7 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
           and mp.status = com.matchimban.matchimban_api.meeting.entity.MeetingParticipant.Status.ACTIVE
         order by mp.id asc
     """)
-    List<Long> findActiveLastReadIds(@Param("meetingId") Long meetingId);
+    List<String> findActiveLastReadIds(@Param("meetingId") Long meetingId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -136,7 +136,7 @@ public interface MeetingParticipantRepository extends JpaRepository<MeetingParti
             @Param("meetingId") Long meetingId,
             @Param("memberId") Long memberId,
             @Param("status") MeetingParticipant.Status status,
-            @Param("lastReadId") Long lastReadId
+            @Param("lastReadId") String lastReadId
     );
 
     @Query("""

@@ -62,7 +62,7 @@ public class ChatMessageController {
 	public ResponseEntity<ApiResult<ChatMessagesLoadedData>> getMessages(
 		@AuthenticationPrincipal MemberPrincipal principal,
 		@PathVariable Long meetingId,
-		@RequestParam(required = false) Long cursor,
+		@RequestParam(required = false) String cursor,
 		@RequestParam(defaultValue = "30") @Min(1) @Max(100) int size
 	) {
 		ChatMessagesLoadedData data = chatService.getMessages(
