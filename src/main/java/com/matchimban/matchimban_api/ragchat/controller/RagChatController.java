@@ -8,7 +8,10 @@ import com.matchimban.matchimban_api.ragchat.dto.request.RagChatAskRequest;
 import com.matchimban.matchimban_api.ragchat.dto.response.RagChatAskData;
 import com.matchimban.matchimban_api.ragchat.dto.response.RagHealthData;
 import com.matchimban.matchimban_api.ragchat.dto.response.RagHistoryData;
+import com.matchimban.matchimban_api.ragchat.dto.queue.RagChatQueueMessage;
+import com.matchimban.matchimban_api.ragchat.queue.RagChatQueuePublisher;
 import com.matchimban.matchimban_api.ragchat.service.RagChatService;
+import com.matchimban.matchimban_api.ragchat.sse.RagChatSseRegistry;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -20,7 +23,9 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -31,6 +36,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Validated
 @Tag(name = "RagChat", description = "RAG 챗봇 API")
@@ -39,6 +45,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class RagChatController {
 
 	private final RagChatService ragChatService;
+	private final RagChatSseRegistry sseRegistry;
+	private final RagChatQueuePublisher queuePublisher;
 
 	@CsrfRequired
 	@Operation(summary = "RAG 질문", description = "질문을 전송하고 식당 추천 답변을 받습니다.")
@@ -116,6 +124,24 @@ public class RagChatController {
 	) {
 		RagHistoryData data = ragChatService.getHistory(principal.memberId(), userId, limit, beforeId);
 		return ResponseEntity.ok(ApiResult.of("rag_history_loaded", data));
+	}
+
+	@CsrfRequired
+	@Operation(summary = "RAG 질문 (SSE 스트림)", description = "질문을 큐에 넣고 SSE로 결과를 스트리밍합니다.")
+	@PostMapping(value = "/api/v1/rag-chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+	public SseEmitter streamAsk(
+		@AuthenticationPrincipal MemberPrincipal principal,
+		@Valid @RequestBody RagChatAskRequest request
+	) {
+		ragChatService.assertOwner(principal.memberId(), request.userId());
+
+		String requestId = UUID.randomUUID().toString();
+		SseEmitter emitter = new SseEmitter(60_000L);
+		sseRegistry.register(requestId, emitter);
+
+		queuePublisher.publish(new RagChatQueueMessage(requestId, request.userId(), request.message()));
+
+		return emitter;
 	}
 
 	@Operation(summary = "RAG 서버 상태 확인")
