@@ -14,4 +14,6 @@ public interface RagChatService {
 	RagHistoryData getHistory(Long memberId, String userId, int limit, Long beforeId);
 
 	RagHealthData health();
+
+	void assertOwner(Long memberId, String userId);
 }
