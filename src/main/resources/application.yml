@@ -14,6 +14,19 @@ spring:
   #     region:
   #       static: ${AWS_REGION:ap-northeast-2}
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        concurrency: 5
+        prefetch: 5
+        acknowledge-mode: manual
+        default-requeue-rejected: false
+
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/matchimban}
@@ -33,6 +46,11 @@ spring:
   #   aws:
   #     region:
   #       static: ${AWS_REGION}
+
+server:
+  tomcat:
+    mbeanregistry:
+      enabled: true
 
 management:
   endpoints:
@@ -65,10 +83,22 @@ resilience4j:
         slow-call-duration-threshold: 2s
         wait-duration-in-open-state: 10s
         permitted-number-of-calls-in-half-open-state: 3
+      rag-chat:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 30
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 8s
+        slow-call-rate-threshold: 60
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
   bulkhead:
     instances:
       kakao:
         max-concurrent-calls: 20
+        max-wait-duration: 0
+      rag-chat:
+        max-concurrent-calls: 5
         max-wait-duration: 0
 
 ai-recommendation:
@@ -84,6 +114,10 @@ rag-chat:
     reset: ${RAG_CHAT_PATH_RESET:/RAGchat/{user_id}}
     history: ${RAG_CHAT_PATH_HISTORY:/history/{user_id}}
     health: ${RAG_CHAT_PATH_HEALTH:/health}
+  queue:
+    name: rag.chat.jobs
+    exchange: rag.chat.exchange
+    routing-key: rag.chat.job
 
 perf-log:
   enabled: ${PERF_LOG_ENABLED:true}
