@@ -172,6 +172,9 @@ public class MenuSelectionConfirmService {
             discountBySpId.put(sp.getId(), alloc);
         }
 
+        normalizeToWholeWon(subtotalBySpId, sumSubtotal, hostSpId);
+        normalizeToWholeWon(discountBySpId, discount, hostSpId);
+
         for (SettlementParticipant sp : participants) {
             BigDecimal sub = subtotalBySpId.get(sp.getId());
             BigDecimal alloc = discountBySpId.get(sp.getId());
@@ -183,6 +186,26 @@ public class MenuSelectionConfirmService {
 
     private BigDecimal safe(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
+    }
+
+    private void normalizeToWholeWon(Map<Long, BigDecimal> amountsBySpId, BigDecimal targetTotal, Long hostSpId) {
+        if (amountsBySpId.isEmpty()) {
+            return;
+        }
+
+        BigDecimal flooredSum = BigDecimal.ZERO;
+        for (Map.Entry<Long, BigDecimal> entry : amountsBySpId.entrySet()) {
+            BigDecimal floored = floorWon(entry.getValue());
+            entry.setValue(floored);
+            flooredSum = flooredSum.add(floored);
+        }
+
+        BigDecimal remainder = floorWon(targetTotal).subtract(flooredSum);
+        amountsBySpId.compute(hostSpId, (key, current) -> safe(current).add(remainder));
+    }
+
+    private BigDecimal floorWon(BigDecimal amount) {
+        return safe(amount).setScale(0, RoundingMode.DOWN);
     }
 
     private void publishSettlementResultReadyNotification(Long meetingId, Long settlementId) {

@@ -1,0 +1,1 @@
+ALTER SEQUENCE receipt_items_seq INCREMENT BY 50;

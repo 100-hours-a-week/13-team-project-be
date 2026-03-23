@@ -28,6 +28,7 @@ public class SettlementOcrTriggerService {
     private final MeetingParticipantRepository meetingParticipantRepository;
     private final MeetingSettlementRepository meetingSettlementRepository;
     private final SettlementOcrJobRepository ocrJobRepository;
+    private final SettlementProgressSseService settlementProgressSseService;
 
     @Transactional
     public OcrTriggerResponse trigger(Long meetingId, Long memberId) {
@@ -78,6 +79,7 @@ public class SettlementOcrTriggerService {
         }
 
         settlement.changeStatus(SettlementStatus.OCR_PROCESSING);
+        settlementProgressSseService.publishAfterCommit(meetingId);
 
         return new OcrTriggerResponse(settlement.getId(), settlement.getSettlementStatus(), requestId);
     }
