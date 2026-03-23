@@ -19,7 +19,7 @@ public class ReceiptItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "receipt_items_seq_gen")
-    @SequenceGenerator(name = "receipt_items_seq_gen", sequenceName = "receipt_items_seq", allocationSize = 1)
+    @SequenceGenerator(name = "receipt_items_seq_gen", sequenceName = "receipt_items_seq", allocationSize = 50)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
