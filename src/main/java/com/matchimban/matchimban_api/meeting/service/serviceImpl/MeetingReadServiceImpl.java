@@ -71,27 +71,6 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                 ? pageRows.get(pageRows.size() - 1).getMeetingParticipantId()
                 : null;
 
-        List<Long> meetingIds = pageRows.stream()
-                .map(MyMeetingRow::getMeetingId)
-                .distinct()
-                .toList();
-
-        List<Vote> votes = voteRepository.findByMeetingIdInOrderByMeetingIdAscRoundAsc(meetingIds);
-
-        Map<Long, List<Vote>> votesByMeetingId = votes.stream()
-                .collect(Collectors.groupingBy(v -> v.getMeeting().getId()));
-
-        Map<Long, MeetingStatus> meetingStatusByMeetingId = meetingIds.stream()
-                .collect(Collectors.toMap(
-                        mid -> mid,
-                        mid -> {
-                            List<Vote> vs = votesByMeetingId.get(mid);
-                            Vote entry = resolveEntryVote(vs);
-                            VoteStatus status = (entry == null) ? null : entry.getStatus();
-                            return mapMeetingStatus(status); // null -> READY
-                        }
-                ));
-
         List<MyMeetingSummary> items = pageRows.stream()
                 .map(r -> new MyMeetingSummary(
                         r.getMeetingId(),
@@ -100,7 +79,7 @@ public class MeetingReadServiceImpl implements MeetingReadService {
                         r.getParticipantCount(),
                         r.getTargetHeadcount(),
                         r.isQuickMeeting(),
-                        meetingStatusByMeetingId.get(r.getMeetingId())
+                        mapMeetingStatus(r.getVoteStatus())
                 ))
                 .toList();
 

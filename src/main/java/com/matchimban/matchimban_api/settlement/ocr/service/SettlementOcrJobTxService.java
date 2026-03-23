@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -26,6 +28,7 @@ public class SettlementOcrJobTxService {
     private final MeetingSettlementRepository settlementRepository;
     private final ReceiptItemRepository receiptItemRepository;
     private final AppOcrProperties ocrProps;
+    private final com.matchimban.matchimban_api.settlement.service.SettlementProgressSseService settlementProgressSseService;
 
     @Transactional
     public Long claimNextJob(String instanceId) {
@@ -41,6 +44,7 @@ public class SettlementOcrJobTxService {
 
                         jobRepository.save(job);
                         settlementRepository.save(settlement);
+                        settlementProgressSseService.publishAfterCommit(settlement.getMeeting().getId());
                         return null;
                     }
 
@@ -64,6 +68,7 @@ public class SettlementOcrJobTxService {
 
         jobRepository.save(job);
         settlementRepository.save(settlement);
+        settlementProgressSseService.publishAfterCommit(settlement.getMeeting().getId());
     }
 
     @Transactional
@@ -78,6 +83,7 @@ public class SettlementOcrJobTxService {
 
         jobRepository.save(job);
         settlementRepository.save(settlement);
+        settlementProgressSseService.publishAfterCommit(settlement.getMeeting().getId());
     }
 
     @Transactional
@@ -92,22 +98,25 @@ public class SettlementOcrJobTxService {
 
         receiptItemRepository.deleteBySettlementId(settlementId);
 
+        List<ReceiptItem> items = new ArrayList<>(resp.result().items().size());
         for (RunpodOcrResponse.ReceiptItem it : resp.result().items()) {
-            ReceiptItem item = ReceiptItem.builder()
+            items.add(ReceiptItem.builder()
                     .settlement(settlement)
                     .itemName(it.name())
                     .unitPrice(BigDecimal.valueOf(it.unitPrice()))
                     .quantity((int) Math.round(it.quantity()))
                     .totalPrice(BigDecimal.valueOf(it.amount()))
-                    .build();
-            receiptItemRepository.save(item);
+                    .build());
         }
+
+        receiptItemRepository.saveAll(items);
 
         settlement.changeStatus(SettlementStatus.OCR_SUCCEEDED);
         job.markSucceeded(Instant.now());
 
         settlementRepository.save(settlement);
         jobRepository.save(job);
+        settlementProgressSseService.publishAfterCommit(settlement.getMeeting().getId());
     }
 
     private Duration calculateRetryDelay(int attemptCount) {
