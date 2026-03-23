@@ -31,6 +31,10 @@ spring:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/matchimban}
 
+  mongodb:
+    observation:
+      enabled: true
+
   jpa:
     hibernate:
       ddl-auto: update
