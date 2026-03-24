@@ -43,3 +43,8 @@ chat:
   redis:
     listener:
       enabled: false
+
+settlement:
+  redis:
+    listener:
+      enabled: false
