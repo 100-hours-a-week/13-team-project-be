@@ -167,9 +167,18 @@ chat:
       latest-id:
         ttl-seconds: ${CHAT_CACHE_MESSAGES_LATEST_ID_TTL_SECONDS:120}
   redis:
+    listener:
+      enabled: ${CHAT_REDIS_LISTENER_ENABLED:true}
     channel:
       message-created: ${CHAT_REDIS_CHANNEL_MESSAGE_CREATED:chat:meeting:message-created}
       unread-counts-updated: ${CHAT_REDIS_CHANNEL_UNREAD_COUNTS_UPDATED:chat:meeting:unread-counts-updated}
+
+settlement:
+  redis:
+    listener:
+      enabled: ${SETTLEMENT_REDIS_LISTENER_ENABLED:true}
+    channel:
+      progress-updated: ${SETTLEMENT_REDIS_CHANNEL_PROGRESS_UPDATED:settlement:meeting:progress-updated}
 
 notification:
   dispatch:
