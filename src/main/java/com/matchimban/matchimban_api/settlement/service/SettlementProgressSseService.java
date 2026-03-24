@@ -1,6 +1,7 @@
 package com.matchimban.matchimban_api.settlement.service;
 
 import com.matchimban.matchimban_api.settlement.dto.response.SettlementProgressResponse;
+import com.matchimban.matchimban_api.settlement.redis.SettlementProgressRedisPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -20,6 +21,7 @@ public class SettlementProgressSseService {
     private static final String EVENT_NAME = "settlement-progress";
 
     private final SettlementProgressService settlementProgressService;
+    private final SettlementProgressRedisPublisher settlementProgressRedisPublisher;
 
     private final Map<Long, Set<Subscriber>> subscribersByMeetingId = new ConcurrentHashMap<>();
 
@@ -61,14 +63,14 @@ public class SettlementProgressSseService {
 
     public void publishAfterCommit(Long meetingId) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            publish(meetingId);
+            settlementProgressRedisPublisher.publish(meetingId);
             return;
         }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                publish(meetingId);
+                settlementProgressRedisPublisher.publish(meetingId);
             }
         });
     }
