@@ -122,7 +122,7 @@ Moyeobab/
 │   ├── src/main/resources/db/migration/   # Flyway V1..V19
 │   └── docker-compose.yml           # postgres + redis
 │
-├── fe/                              # React + Vite 프론트엔드 (FSD)
+├── fe/                              # React + Vite 프론트엔드 
 │   └── src/
 
 ```
