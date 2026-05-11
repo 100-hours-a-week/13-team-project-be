@@ -6,7 +6,6 @@
 
 
 ### 모두의 취향을 반영한 식당 추천 서비스
-[moyeobab.com](https://moyeobab.com)
 
 </div>
 
