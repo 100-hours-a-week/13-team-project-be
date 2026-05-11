@@ -6,7 +6,6 @@
 
 
 ### 모두의 취향을 반영한 식당 추천 서비스
-
 [moyeobab.com](https://moyeobab.com)
 
 </div>
@@ -25,22 +24,22 @@
 
 ## 🧭 사용자 흐름 (User Journey)
 
-### 1. 모임을 만들고, 모두의 취향을 모은다
+### 1. 모임을 만들고, 모두의 취향을 모으자!
 
-<img src="./%EC%82%AC%EC%A7%84/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-05-11%20%EC%98%A4%ED%9B%84%202.00.26.png" alt="알레르기 + 선호 카테고리 + 모임 정보" width="800" />
+<img src="https://github.com/user-attachments/assets/2ddebeeb-d133-4eab-b208-cc3a6c28ed80"  alt="알레르기 + 선호 카테고리 + 모임 정보" width="800" />
 
 각 멤버의 **알레르기 그룹**, **선호 카테고리**, **비선호 카테고리**가 모임 정보와 결합되어
 **음식점 투표 후보**가 자동으로 생성됩니다.
 
-### 2. 투표로 식당을 결정한다
+### 2. 투표로 식당을 결정!
 
-<img src="./%EC%82%AC%EC%A7%84/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-05-11%20%EC%98%A4%ED%9B%84%202.00.29.png" alt="투표를 통한 최종 식당 선정" width="800" />
+<img src="https://github.com/user-attachments/assets/146b2dfa-564c-4139-9782-329e8a23a686" alt="투표를 통한 최종 식당 선정" width="800" />
 
 AI가 추천한 후보 중에서 **TOP 3 투표**로 최종 식당을 결정합니다.
 
-### 3. 채팅하고, 먹고, 영수증으로 정산한다
+### 3. 채팅하고, 먹고, 영수증으로 정산까지!
 
-<img src="./%EC%82%AC%EC%A7%84/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-05-11%20%EC%98%A4%ED%9B%84%202.00.34.png" alt="채팅 + OCR 영수증 정산" width="800" />
+<img src="https://github.com/user-attachments/assets/e8d5f10e-5aab-46c9-8243-60fe53c0f4d1" alt="채팅 + OCR 영수증 정산" width="800" />
 
 모임원과 실시간 채팅으로 약속을 잡고, 식사 후엔 **영수증을 사진 한 장 찍어 올리면 OCR이 항목별로 분담**해줍니다.
 
@@ -64,7 +63,7 @@ AI가 추천한 후보 중에서 **TOP 3 투표**로 최종 식당을 결정합�
 
 ## 👥 팀원 소개
 
-<img src="./%EC%82%AC%EC%A7%84/%EC%8A%A4%ED%81%AC%EB%A6%B0%EC%83%B7%202026-05-11%20%EC%98%A4%ED%9B%84%202.04.50.png" alt="팀원 소개" width="700" />
+<img src="https://github.com/user-attachments/assets/6f9ec754-cd96-4b5a-8d75-e750a693ce91" alt="팀원 소개" width="700" />
 
 | 이름 | 역할 | 담당 |
 |---|---|---|
